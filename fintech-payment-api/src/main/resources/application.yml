@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: fintech-payment-api
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/fintechdb}
+    driverClassName: org.postgresql.Driver
+    username: ${DATABASE_USERNAME:postgres}
+    password: ${DATABASE_PASSWORD:postgres}
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+  h2:
+    console:
+      enabled: false
+
+server:
+  port: 8080
+
+logging:
+  level:
+    org.springframework.security: DEBUG
