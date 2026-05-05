@@ -1,6 +1,11 @@
 spring:
   application:
     name: fintech-payment-api
+
+  config:
+    import: "optional:dotenv:.env"
+
+#for development, you can use the following properties directly in application.yml or set them in .env file
   datasource:
     url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/fintechdb}
     driverClassName: org.postgresql.Driver
@@ -9,15 +14,15 @@ spring:
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
-      # 'update' is fine for development, but should be switched to 'validate' in production.
+      #for development
       ddl-auto: update
     show-sql: true
-  h2:
-    console:
-      enabled: false
+  jwt:
+    secret: ${JWT_SECRET:CSrYLJouBPSkpRtuQ9npnkOa52xsOp26QSrVgBg9XaM=}
+    expiration-ms: ${JWT_EXPIRATION_MS:3600000} # 1 hour in milliseconds
 
-server:
-  port: 8080
+  server:
+    port: 8080
 
 logging:
   level:
