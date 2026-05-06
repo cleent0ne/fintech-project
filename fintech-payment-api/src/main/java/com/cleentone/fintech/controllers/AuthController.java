@@ -4,6 +4,7 @@ import com.cleentone.fintech.dto.AuthResponse;
 import com.cleentone.fintech.dto.LoginRequest;
 import com.cleentone.fintech.dto.RegisterRequest;
 import com.cleentone.fintech.dto.UserResponse;
+import com.cleentone.fintech.exception.ResourceNotFoundException;
 import com.cleentone.fintech.model.User;
 import com.cleentone.fintech.repository.UserRepository;
 import com.cleentone.fintech.services.AuthService;
@@ -44,7 +45,7 @@ public class AuthController {
      @GetMapping("/me")
     public ResponseEntity<UserResponse> me(@AuthenticationPrincipal UserDetails userDetails) {
         User user = userRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
                         return ResponseEntity.ok(UserResponse.from(user));
     }
 
