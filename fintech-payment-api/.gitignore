@@ -28,7 +28,7 @@ build/
 !**/src/main/resources/archetype-resources/google-services.json
 
 ### VS Code ###
-.vscode/
+.vscode
 
 ### Operating System ###
 .DS_Store
