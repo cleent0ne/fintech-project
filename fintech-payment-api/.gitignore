@@ -29,7 +29,7 @@ build/
 
 ### VS Code ###
 .vscode
-
+.vscode/**
 ### Operating System ###
 .DS_Store
 Thumbs.db
