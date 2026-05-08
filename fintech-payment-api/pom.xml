@@ -39,6 +39,11 @@
 			<scope>runtime</scope>
 		</dependency>
 		<dependency>
+			<groupId>com.h2database</groupId>
+			<artifactId>h2</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
     <groupId>org.assertj</groupId>
     <artifactId>assertj-core</artifactId>
     <scope>test</scope>
@@ -68,6 +73,12 @@
     <groupId>com.github.vladimir-bukhtoyarov</groupId>
     <artifactId>bucket4j-core</artifactId>
     <version>7.6.0</version>
+</dependency>
+
+<!-- Caffeine cache — used for bounded, TTL-evicting rate-limit buckets per IP -->
+<dependency>
+    <groupId>com.github.ben-manes.caffeine</groupId>
+    <artifactId>caffeine</artifactId>
 </dependency>
 
 
@@ -114,6 +125,13 @@
 			<groupId>org.springframework.security</groupId>
 			<artifactId>spring-security-test</artifactId>
 			<scope>test</scope>
+		</dependency>
+
+		<!-- Support for .env files via spring.config.import -->
+		<dependency>
+			<groupId>me.paulschwarz</groupId>
+			<artifactId>spring-dotenv</artifactId>
+			<version>4.0.0</version>
 		</dependency>
 	</dependencies>
 

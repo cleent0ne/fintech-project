@@ -2,6 +2,8 @@ package com.cleentone.fintech.config;
 
 import com.cleentone.fintech.exception.ErrorResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
 import io.github.bucket4j.Refill;
@@ -17,16 +19,25 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.time.Duration;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 @Component
 public class RateLimitFilter extends OncePerRequestFilter {
 
-    // One bucket per IP address — in production, back this with Redis
-    private final Map<String, Bucket> loginBuckets = new ConcurrentHashMap<>();
-    private final Map<String, Bucket> registerBuckets = new ConcurrentHashMap<>();
-    
+    /**
+     * Caffeine caches — bounded size + TTL eviction prevent unbounded memory growth.
+     * Each unique IP gets its own bucket; inactive IPs are evicted after 10 minutes.
+     */
+    private final Cache<String, Bucket> loginBuckets = Caffeine.newBuilder()
+            .expireAfterAccess(10, TimeUnit.MINUTES)
+            .maximumSize(100_000)
+            .build();
+
+    private final Cache<String, Bucket> registerBuckets = Caffeine.newBuilder()
+            .expireAfterAccess(10, TimeUnit.MINUTES)
+            .maximumSize(100_000)
+            .build();
+
     @Autowired
     private ObjectMapper objectMapper;
 
@@ -46,8 +57,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
         String clientIp = getClientIp(request);
         Bucket bucket = path.contains("login")
-                ? loginBuckets.computeIfAbsent(clientIp, k -> createLoginBucket())
-                : registerBuckets.computeIfAbsent(clientIp, k -> createRegisterBucket());
+                ? loginBuckets.get(clientIp, k -> createLoginBucket())
+                : registerBuckets.get(clientIp, k -> createRegisterBucket());
 
         if (bucket.tryConsume(1)) {
             chain.doFilter(request, response);
@@ -63,7 +74,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     private Bucket createLoginBucket() {
-        // 10 attempts per minute — generous but blocks automated attacks
+        // 10 attempts per minute
         return Bucket.builder()
                 .addLimit(Bandwidth.classic(10, Refill.intervally(10, Duration.ofMinutes(1))))
                 .build();
@@ -76,13 +87,49 @@ public class RateLimitFilter extends OncePerRequestFilter {
                 .build();
     }
 
+    /**
+     * Resolves the real client IP.
+     *
+     * X-Forwarded-For is only trusted when the TCP connection originates from a
+     * private/loopback address (i.e., a trusted load balancer or reverse proxy).
+     * Accepting it unconditionally would let any client spoof their IP to bypass
+     * rate limiting.
+     */
     private String getClientIp(HttpServletRequest request) {
-        // Check X-Forwarded-For first (set by load balancers / proxies)
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isEmpty()) {
-            return forwarded.split(",")[0].trim(); // first IP in chain is the real client
+        String remoteAddr = request.getRemoteAddr();
+
+        if (isTrustedProxy(remoteAddr)) {
+            String forwarded = request.getHeader("X-Forwarded-For");
+            if (forwarded != null && !forwarded.isBlank()) {
+                // First IP in the chain is the original client
+                return forwarded.split(",")[0].trim();
+            }
         }
-        System.out.println("Client IP: " + request.getRemoteAddr());
-        return request.getRemoteAddr();
+
+        return remoteAddr;
+    }
+
+    /**
+     * Returns true if the given IP is a loopback or private-range address —
+     * the only addresses that should be sending X-Forwarded-For headers.
+     */
+    private boolean isTrustedProxy(String ip) {
+        if (ip == null) return false;
+        return ip.equals("127.0.0.1")
+                || ip.equals("::1")
+                || ip.startsWith("10.")
+                || ip.startsWith("192.168.")
+                || (ip.startsWith("172.") && isIn172PrivateRange(ip));
+    }
+
+    private boolean isIn172PrivateRange(String ip) {
+        // 172.16.0.0 – 172.31.255.255
+        try {
+            String[] parts = ip.split("\\.");
+            int second = Integer.parseInt(parts[1]);
+            return second >= 16 && second <= 31;
+        } catch (Exception e) {
+            return false;
+        }
     }
 }

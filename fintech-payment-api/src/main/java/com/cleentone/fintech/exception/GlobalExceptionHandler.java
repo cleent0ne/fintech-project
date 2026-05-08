@@ -65,7 +65,7 @@ public class GlobalExceptionHandler {
 
         log.warn("Malformed JSON request: {}", e.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-        .body(new ErrorResponse("Invalid Request Body", e.getMessage()));
+        .body(new ErrorResponse("Invalid Request Body", "The request body is malformed or contains invalid data."));
     }
 
     @ExceptionHandler(MissingServletRequestParameterException.class)

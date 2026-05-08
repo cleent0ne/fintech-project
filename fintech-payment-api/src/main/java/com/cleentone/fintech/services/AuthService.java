@@ -1,5 +1,6 @@
 package com.cleentone.fintech.services;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -18,44 +19,50 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class AuthService {
 
-private final UserRepository userRepository;
-private final PasswordEncoder passwordEncoder;
-private final JwtUtil jwtUtil;
-public AuthResponse register(RegisterRequest request){
-    if (userRepository.existsByEmail(request.getEmail())) {
-        throw new EmailAlreadyExistsException("Email already Exists");
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtUtil jwtUtil;
+
+    // Keep in sync with the actual JWT expiry so clients receive accurate TTL
+    @Value("${spring.jwt.expiration-ms}")
+    private long jwtExpirationMs;
+
+    public AuthResponse register(RegisterRequest request) {
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new EmailAlreadyExistsException("Email already Exists");
+        }
+
+        User user = new User();
+        user.setEmail(request.getEmail().toLowerCase().trim());
+        user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+        user.setFullName(request.getFullName());
+        userRepository.save(user);
+
+        String token = jwtUtil.generateToken(user.getEmail());
+        return AuthResponse.builder()
+                .token(token)
+                .email(user.getEmail())
+                .message("Registration successful")
+                .expiresIn(jwtExpirationMs / 1000) // convert ms → seconds for the client
+                .build();
     }
 
-    User user = new User();
-    user.setEmail(request.getEmail().toLowerCase().trim());
-    user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
-    user.setFullName(request.getFullName());
-    userRepository.save(user);
+    public AuthResponse login(LoginRequest request) {
+        // Use the same error message regardless of whether the email exists or the
+        // password is wrong — prevents user-enumeration attacks.
+        User user = userRepository.findByEmail(request.getEmail().toLowerCase().trim())
+                .orElseThrow(() -> new InvalidCredentialsException("Invalid email or password"));
 
-    String token = jwtUtil.generateToken(user.getEmail());
-    return AuthResponse.builder()
-    .token(token)
-    .email(user.getEmail())
-    .message("Registration successful")
-    .expiresIn(86400L)
-    .build();
-}
+        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+            throw new InvalidCredentialsException("Invalid email or password");
+        }
 
-
-public AuthResponse login(LoginRequest request) {
-    User user = userRepository.findByEmail(request.getEmail().toLowerCase().trim())
-    .orElseThrow(() -> new InvalidCredentialsException("Account Not Found"));
-
-    if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-        throw new InvalidCredentialsException("Invalid email or password");
+        String token = jwtUtil.generateToken(user.getEmail());
+        return AuthResponse.builder()
+                .token(token)
+                .email(user.getEmail())
+                .message("Login successful")
+                .expiresIn(jwtExpirationMs / 1000)
+                .build();
     }
-
-    String token = jwtUtil.generateToken(user.getEmail());
-    return AuthResponse.builder()
-    .token(token)
-    .email(user.getEmail())
-    .message("Login successful")
-    .expiresIn(86400L)
-    .build();
-}
 }

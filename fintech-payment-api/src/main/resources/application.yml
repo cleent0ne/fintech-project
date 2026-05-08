@@ -5,25 +5,27 @@ spring:
   config:
     import: "optional:dotenv:.env"
 
-#for development, you can use the following properties directly in application.yml or set them in .env file
   datasource:
-    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/fintechdb}
+    url: ${DATABASE_URL}
     driverClassName: org.postgresql.Driver
-    username: ${DATABASE_USERNAME:postgres}
-    password: ${DATABASE_PASSWORD:postgres}
+    username: ${DATABASE_USERNAME}
+    password: ${DATABASE_PASSWORD}
+
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
-      #for development
       ddl-auto: update
-    show-sql: true
-  jwt:
-    secret: ${JWT_SECRET:CSrYLJouBPSkpRtuQ9npnkOa52xsOp26QSrVgBg9XaM=}
-    expiration-ms: ${JWT_EXPIRATION_MS:3600000} # 1 hour in milliseconds
+    show-sql: false  # enable only via application-dev.yml
 
-  server:
-    port: 8080
+  jwt:
+    secret: ${JWT_SECRET}
+    expiration-ms: ${JWT_EXPIRATION_MS}
+
+server:
+  port: ${SERVER_PORT:8080}
 
 logging:
   level:
-    org.springframework.security: DEBUG
+    # Keep security logs at WARN in production — DEBUG exposes token details
+    org.springframework.security: WARN
+    root: INFO

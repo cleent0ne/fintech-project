@@ -1,7 +1,5 @@
 package com.cleentone.fintech.security;
 
-
-
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -19,6 +17,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import com.cleentone.fintech.config.JwtAuthFilter;
+import com.cleentone.fintech.config.RateLimitFilter;
 import com.cleentone.fintech.services.CustomUserDetailsService;
 
 @Configuration
@@ -27,24 +26,30 @@ import com.cleentone.fintech.services.CustomUserDetailsService;
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
+    private final RateLimitFilter rateLimitFilter;
     private final CustomUserDetailsService userDetailsService;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            // CSRF disabled intentionally — this API uses stateless JWT auth,
+            // CSRF disabled intentionally — this API uses stateless JWT auth
             .csrf(AbstractHttpConfigurer::disable)
+            .headers(headers -> headers
+                .frameOptions(frameOptions -> frameOptions.deny())
+            )
 
             .authorizeHttpRequests(auth -> auth
                 // Public endpoints — no token required
-                .requestMatchers("/auth/**").permitAll()
-                // Everything else requires a token
+                .requestMatchers("/auth/register", "/auth/login", "/auth/logout").permitAll()
+                // Everything else requires a valid token
                 .anyRequest().authenticated()
             )
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
             .authenticationProvider(authenticationProvider())
+            // Rate limiting runs first, then JWT auth
+            .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

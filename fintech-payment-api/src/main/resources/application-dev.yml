@@ -1,0 +1,15 @@
+# Dev-only overrides — activate with: --spring.profiles.active=dev
+# These settings must NEVER be enabled in production.
+
+spring:
+  jpa:
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true  # pretty-print SQL for readability
+
+logging:
+  level:
+    org.springframework.security: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql: TRACE
