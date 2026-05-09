@@ -23,7 +23,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
 
-    // Keep in sync with the actual JWT expiry so clients receive accurate TTL
+    
     @Value("${spring.jwt.expiration-ms}")
     private long jwtExpirationMs;
 
@@ -48,8 +48,7 @@ public class AuthService {
     }
 
     public AuthResponse login(LoginRequest request) {
-        // Use the same error message regardless of whether the email exists or the
-        // password is wrong — prevents user-enumeration attacks.
+        
         User user = userRepository.findByEmail(request.getEmail().toLowerCase().trim())
                 .orElseThrow(() -> new InvalidCredentialsException("Invalid email or password"));
 

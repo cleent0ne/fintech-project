@@ -50,7 +50,6 @@ public class AuthController {
         String authHeader = request.getHeader("Authorization");
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
-            // Blacklist the token's jti so it cannot be reused
             String jti = jwtUtil.extractJti(token);
             tokenBlacklistService.blacklist(jti, jwtUtil.extractExpiration(token));
         }

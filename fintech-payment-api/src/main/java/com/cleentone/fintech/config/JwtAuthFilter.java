@@ -51,7 +51,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             return;
         }
 
-        // Reject blacklisted tokens (e.g. from a previous logout)
+        
         String jti = jwtUtil.extractJti(token);
         if (tokenBlacklistService.isBlacklisted(jti)) {
             sendUnauthorized(response, "Token has been revoked");
@@ -78,7 +78,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 SecurityContextHolder.getContext().setAuthentication(authToken);
 
             } catch (Exception e) {
-                // Prevent 500 errors — clear context and let Spring Security return 401
                 SecurityContextHolder.clearContext();
             }
         }
