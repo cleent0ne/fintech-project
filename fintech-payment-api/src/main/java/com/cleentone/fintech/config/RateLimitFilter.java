@@ -24,10 +24,7 @@ import java.util.concurrent.TimeUnit;
 @Component
 public class RateLimitFilter extends OncePerRequestFilter {
 
-    /**
-     * Caffeine caches — bounded size + TTL eviction prevent unbounded memory growth.
-     * Each unique IP gets its own bucket; inactive IPs are evicted after 10 minutes.
-     */
+  
     private final Cache<String, Bucket> loginBuckets = Caffeine.newBuilder()
             .expireAfterAccess(10, TimeUnit.MINUTES)
             .maximumSize(100_000)
@@ -49,7 +46,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
         String path = request.getRequestURI();
 
-        // Only rate limit auth endpoints
+      
         if (!path.startsWith("/auth/login") && !path.startsWith("/auth/register")) {
             chain.doFilter(request, response);
             return;
@@ -81,7 +78,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     private Bucket createRegisterBucket() {
-        // 5 registrations per minute per IP — stops mass account creation
+       
         return Bucket.builder()
                 .addLimit(Bandwidth.classic(5, Refill.intervally(5, Duration.ofMinutes(1))))
                 .build();

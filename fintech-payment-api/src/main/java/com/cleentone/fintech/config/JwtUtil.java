@@ -48,12 +48,12 @@ public class JwtUtil {
         return getClaims(token).getSubject();
     }
 
-    /** Returns the JWT ID (jti) — used to blacklist a token on logout. */
+   
     public String extractJti(String token) {
         return getClaims(token).getId();
     }
 
-    /** Returns the expiration date of a token without throwing on expiry. */
+ 
     public Date extractExpiration(String token) {
         return getClaims(token).getExpiration();
     }
@@ -61,7 +61,7 @@ public class JwtUtil {
     public boolean validateToken(String token) {
         try {
             Claims claims = getClaims(token);
-            // Validate issuer and audience to prevent cross-service token reuse
+            
             if (!ISSUER.equals(claims.getIssuer()))     return false;
             if (!AUDIENCE.equals(claims.getAudience())) return false;
             return true;

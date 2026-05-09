@@ -5,7 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
-@EnableScheduling  // activates @Scheduled in TokenBlacklistService
+@EnableScheduling  
 public class FintechApplication {
 
 	public static void main(String[] args) {
