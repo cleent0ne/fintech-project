@@ -67,6 +67,23 @@ public class Transaction {
     private LocalDateTime createdAt;
 
     
+    public static Transaction create(
+            Wallet wallet,
+            TransactionType type,
+            BigDecimal amount,
+            BigDecimal balanceAfter,
+            String reference,
+            String description) {
+        Transaction tx = new Transaction();
+        tx.wallet = wallet;
+        tx.type = type;
+        tx.amount = amount;
+        tx.balanceAfter = balanceAfter;
+        tx.reference = reference;
+        tx.status = TransactionStatus.COMPLETED;
+        tx.description = description;
+        return tx;
+    }
 
 
 }
