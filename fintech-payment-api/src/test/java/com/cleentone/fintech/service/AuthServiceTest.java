@@ -5,6 +5,7 @@ import com.cleentone.fintech.dto.*;
 import com.cleentone.fintech.exception.*;
 import com.cleentone.fintech.model.User;
 import com.cleentone.fintech.repository.UserRepository;
+import com.cleentone.fintech.repository.WalletRepository;
 import com.cleentone.fintech.services.AuthService;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -33,6 +34,8 @@ class AuthServiceTest {
 
     @InjectMocks
     private AuthService authService;
+
+    @Mock private WalletRepository walletRepository;
 
     @BeforeEach
     void setup() {
