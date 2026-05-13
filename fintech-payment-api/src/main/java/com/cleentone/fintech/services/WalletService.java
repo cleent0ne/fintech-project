@@ -156,7 +156,6 @@ public class WalletService {
         // ── 4. Acquire locks in consistent order — prevents deadlock ─────────
         // If Thread A locks wallet-1 then waits for wallet-2,
         // and Thread B locks wallet-2 then waits for wallet-1 = DEADLOCK.
-        // Solution: both threads always lock the lower UUID first.
         // Thread B will wait for Thread A to release wallet-1 before proceeding.
         UUID id1 = senderWallet.getId();
         UUID id2 = receiverWallet.getId();

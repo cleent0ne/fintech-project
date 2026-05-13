@@ -73,7 +73,6 @@ public class WalletController {
     }
 
     /**
-     * POST /wallet/transfer
      * Body: { "receiverEmail": "...", "currency": "KES", "amount": 500.00, "description": "..." }
      */
     @PostMapping("/transfer")
