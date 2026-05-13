@@ -104,7 +104,7 @@ public class GlobalExceptionHandler {
         .body(new ErrorResponse("Internal Server Error", "An unexpected error occurred. Please try again later."));
     }
 
-    @ExceptionHandler(RuntimeException.class)
+    @ExceptionHandler(InvalidTransferException.class)
     public ResponseEntity<ErrorResponse> invalidTransfer(InvalidTransferException e){
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
         .body(new ErrorResponse("Invalid Transfer", e.getMessage()));
