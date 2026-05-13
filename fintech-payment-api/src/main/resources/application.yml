@@ -5,6 +5,13 @@ spring:
   config:
     import: "optional:dotenv:.env"
 
+  mvc:
+    throw-exception-if-no-handler-found: true
+
+  web:
+    resources:
+      add-mappings: false  # disable default static resource handling
+
   datasource:
     url: ${DATABASE_URL}
     driverClassName: org.postgresql.Driver

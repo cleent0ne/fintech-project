@@ -7,12 +7,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.NoHandlerFoundException;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -101,4 +103,38 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
         .body(new ErrorResponse("Internal Server Error", "An unexpected error occurred. Please try again later."));
     }
+
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<ErrorResponse> invalidTransfer(InvalidTransferException e){
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+        .body(new ErrorResponse("Invalid Transfer", e.getMessage()));
+    }
+
+    @ExceptionHandler(NoHandlerFoundException.class)
+public ResponseEntity<ErrorResponse> handleRouteNotFound(
+        NoHandlerFoundException ex, HttpServletRequest request) {
+
+    // Log at WARN — this is often someone probing your API
+    log.warn("Route not found: {} {}", ex.getHttpMethod(), request.getRequestURI());
+
+    return ResponseEntity
+            .status(HttpStatus.NOT_FOUND)                              // 404
+            .body(new ErrorResponse(
+                "ROUTE_NOT_FOUND",
+                "The endpoint '" + request.getRequestURI() + "' does not exist"
+            ));
+}
+
+
+@ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+public ResponseEntity<ErrorResponse> handleUnsupportedMediaType(
+        HttpMediaTypeNotSupportedException ex) {
+    return ResponseEntity
+            .status(HttpStatus.UNSUPPORTED_MEDIA_TYPE)                 // 415
+            .body(new ErrorResponse(
+                "UNSUPPORTED_MEDIA_TYPE",
+                "Content-Type must be application/json"
+            ));
+}
+
 }
