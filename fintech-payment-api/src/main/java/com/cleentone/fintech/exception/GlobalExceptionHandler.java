@@ -46,20 +46,20 @@ public class GlobalExceptionHandler {
         .collect(Collectors.joining("; "));
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-        .body(new ErrorResponse("Validation Failed", msg));
+        .body(new ErrorResponse("VALIDATION_FAILED", msg));
     }
 
         @ExceptionHandler(InsufficientFundsException.class)
     public ResponseEntity<ErrorResponse> handleInsufficientFunds(InsufficientFundsException e){
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
-        .body(new ErrorResponse("Insufficient Funds", e.getMessage())); 
+        .body(new ErrorResponse("INSUFFICIENT_FUNDS", e.getMessage())); 
 
     }
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleResourceNotFound(ResourceNotFoundException e){
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
-        .body(new ErrorResponse("Resource Not Found", e.getMessage()));
+        .body(new ErrorResponse("NOT_FOUND", e.getMessage()));
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
@@ -88,7 +88,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public ResponseEntity<ErrorResponse> handleHttpRequestMethodNotSupported(HttpRequestMethodNotSupportedException e){
         return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED)
-        .body(new ErrorResponse("Method Not Allowed", e.getMessage()));
+        .body(new ErrorResponse("METHOD_NOT_ALLOWED", e.getMessage()));
     }
 
     @ExceptionHandler(AccessDeniedException.class)
@@ -106,8 +106,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(InvalidTransferException.class)
     public ResponseEntity<ErrorResponse> invalidTransfer(InvalidTransferException e){
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-        .body(new ErrorResponse("Invalid Transfer", e.getMessage()));
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+        .body(new ErrorResponse("INVALID_TRANSFER", e.getMessage()));
     }
 
     @ExceptionHandler(NoHandlerFoundException.class)

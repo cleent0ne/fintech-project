@@ -148,7 +148,7 @@ class WalletControllerTest {
                             .content(body)
                             .with(csrf()))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.error").value("Validation Failed"));
+                    .andExpect(jsonPath("$.error").value("VALIDATION_FAILED"));
         }
 
         @Test
@@ -282,7 +282,7 @@ class WalletControllerTest {
                             .content(body)
                             .with(csrf()))
                     .andExpect(status().isUnprocessableEntity())
-                    .andExpect(jsonPath("$.error").value("Insufficient Funds"));
+                    .andExpect(jsonPath("$.error").value("INSUFFICIENT_FUNDS"));
         }
 
         @Test
@@ -300,8 +300,8 @@ class WalletControllerTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body)
                             .with(csrf()))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.error").value("Invalid Transfer"))
+                    .andExpect(status().isUnprocessableEntity())
+                    .andExpect(jsonPath("$.error").value("INVALID_TRANSFER"))
                     .andExpect(jsonPath("$.message").value("Cannot transfer to yourself"));
         }
 
@@ -321,7 +321,7 @@ class WalletControllerTest {
                             .content(body)
                             .with(csrf()))
                     .andExpect(status().isNotFound())
-                    .andExpect(jsonPath("$.error").value("Resource Not Found"));
+                    .andExpect(jsonPath("$.error").value("NOT_FOUND"));
         }
 
         @Test
@@ -337,7 +337,7 @@ class WalletControllerTest {
                             .content(body)
                             .with(csrf()))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.error").value("Validation Failed"));
+                    .andExpect(jsonPath("$.error").value("VALIDATION_FAILED"));
         }
 
         @Test

@@ -15,8 +15,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import org.springframework.transaction.annotation.Transactional;
+
 @SpringBootTest
 @AutoConfigureMockMvc
+@Transactional
 class SecurityFlowTest {
 
     @Autowired
@@ -45,7 +48,8 @@ class SecurityFlowTest {
     @Test
 void shouldRejectRequestWithoutToken() throws Exception {
     mockMvc.perform(get("/auth/me"))
-            .andExpect(status().isForbidden()); // Spring Security handles missing tokens, defaults to 403 when no auth provided
+            .andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.error").value("UNAUTHORIZED"));
 }
 
 @Test
@@ -64,7 +68,7 @@ void shouldRejectInvalidToken() throws Exception {
     mockMvc.perform(get("/auth/me")
             .header("Authorization", "Bearer invalid.token.here"))
             .andExpect(status().isUnauthorized())
-            .andExpect(jsonPath("$.error").value("Unauthorized"))
+            .andExpect(jsonPath("$.error").value("UNAUTHORIZED"))
             .andExpect(jsonPath("$.message").value("Token is invalid or expired"));
 }
 
