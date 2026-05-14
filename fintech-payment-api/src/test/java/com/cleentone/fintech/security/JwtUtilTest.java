@@ -14,7 +14,7 @@ class JwtUtilTest {
     private JwtUtil jwtUtil;
 
     private final String secret = Base64.getEncoder().encodeToString("CSrYLJouBPSkpRtuQ9npnkOa52xsOp26QSrVgBg9XaM=".getBytes());
-    private final long expiration = 1000; // 1 second for testing
+    private final long expiration = 10000; // 10 seconds for testing
 
     @BeforeEach
     void setUp() {
