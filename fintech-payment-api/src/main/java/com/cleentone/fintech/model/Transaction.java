@@ -53,6 +53,9 @@ public class Transaction {
     @Column(unique = true, nullable = false)
     private String reference;
 
+    @Column(nullable = true)
+    private String idempotencyKey;
+
     @Enumerated(EnumType.STRING)
     private TransactionStatus status;
 
@@ -73,7 +76,8 @@ public class Transaction {
             BigDecimal amount,
             BigDecimal balanceAfter,
             String reference,
-            String description) {
+            String description,
+            String idempotencyKey) {
         Transaction tx = new Transaction();
         tx.wallet = wallet;
         tx.type = type;
@@ -82,6 +86,7 @@ public class Transaction {
         tx.reference = reference;
         tx.status = TransactionStatus.COMPLETED;
         tx.description = description;
+        tx.idempotencyKey = idempotencyKey;
         return tx;
     }
 

@@ -166,6 +166,7 @@ class WalletIntegrationTest {
         req.setReceiverEmail("receiver@test.com");
         req.setCurrency(Currency.KES);
         req.setAmount(new BigDecimal("1000.00"));
+        req.setRequestId(java.util.UUID.randomUUID().toString());
         req.setDescription("Integration test transfer");
 
         mockMvc.perform(post("/wallet/transfer")
@@ -222,6 +223,7 @@ class WalletIntegrationTest {
         req.setReceiverEmail("rich@test.com");
         req.setCurrency(Currency.KES);
         req.setAmount(new BigDecimal("500.00")); // more than balance
+        req.setRequestId(java.util.UUID.randomUUID().toString());
 
         mockMvc.perform(post("/wallet/transfer")
                         .header("Authorization", "Bearer " + senderToken)
@@ -251,6 +253,7 @@ class WalletIntegrationTest {
         req.setReceiverEmail("self@test.com"); // own email
         req.setCurrency(Currency.KES);
         req.setAmount(new BigDecimal("100.00"));
+        req.setRequestId(java.util.UUID.randomUUID().toString());
 
         mockMvc.perform(post("/wallet/transfer")
                         .header("Authorization", "Bearer " + token)
@@ -272,6 +275,7 @@ class WalletIntegrationTest {
         req.setReceiverEmail("nobody@test.com"); // doesn't exist
         req.setCurrency(Currency.KES);
         req.setAmount(new BigDecimal("100.00"));
+        req.setRequestId(java.util.UUID.randomUUID().toString());
 
         mockMvc.perform(post("/wallet/transfer")
                         .header("Authorization", "Bearer " + token)

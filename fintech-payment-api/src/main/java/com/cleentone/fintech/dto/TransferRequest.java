@@ -17,6 +17,9 @@ public class TransferRequest {
     @Email(message = "Receiver email must be a valid email address")
     private String receiverEmail;
 
+    @NotBlank(message = "Request ID is required for idempotency")
+    private String requestId;
+
     @NotNull(message = "Currency is required")
     private Currency currency;
 

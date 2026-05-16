@@ -21,4 +21,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
 
     // Fetch a specific transaction by reference — for status lookups
     Optional<Transaction> findByReference(String reference);
+
+    // Idempotency check — has this specific operation already happened for this wallet?
+    Optional<Transaction> findByWalletAndIdempotencyKey(Wallet wallet, String idempotencyKey);
 }

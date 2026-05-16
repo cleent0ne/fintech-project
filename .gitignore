@@ -1,1 +1,6 @@
 .vscode/
+load-tests/.venv
+load-tests/.pytest_cache
+load-tests/python_modules
+venv-payment-api/
+venv-payment-processing/
