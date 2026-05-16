@@ -20,8 +20,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+
+import jakarta.persistence.EntityManager;
 
 @Service
 @RequiredArgsConstructor
@@ -31,6 +34,7 @@ public class WalletService {
     private final WalletRepository walletRepository;
     private final TransactionRepository transactionRepository;
     private final UserRepository userRepository;
+    private final EntityManager entityManager;
 
     // ─── WALLET CREATION ─────────────────────────────────────────────────────
 
@@ -84,7 +88,12 @@ public class WalletService {
      */
     @Transactional
     public WalletResponse deposit(User currentUser, DepositRequest request) {
-        Wallet wallet = findWalletOrThrow(currentUser, request.getCurrency());
+        // Defensive check — amount must be positive
+        if (request.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new InvalidTransferException("Deposit amount must be greater than zero");
+        }
+
+        Wallet wallet = findWalletOrThrowWithLock(currentUser, request.getCurrency());
 
         // Add to balance — BigDecimal.add() returns a new object, never mutates
         BigDecimal newBalance = wallet.getBalance().add(request.getAmount());
@@ -99,7 +108,8 @@ public class WalletService {
                 request.getAmount(),
                 newBalance,
                 reference,
-                "Deposit"
+                "Deposit",
+                null // Deposits are not idempotent-checked in this version
         );
         transactionRepository.save(tx);
 
@@ -124,10 +134,39 @@ public class WalletService {
     @Transactional
     public TransferResponse transfer(User currentUser, TransferRequest request) {
 
-        // ── 1. Resolve sender wallet ─────────────────────────────────────────
+        // ── 1. Defensive amount check ───────────────────────────────────────
+        if (request.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new InvalidTransferException("Transfer amount must be greater than zero");
+        }
+
+        // ── 2. Self-transfer check (fail fast before DB calls) ──────────────
+        if (currentUser.getEmail().equalsIgnoreCase(request.getReceiverEmail().trim())) {
+            throw new InvalidTransferException("Cannot transfer to yourself");
+        }
+
+        // ── 3. Resolve sender wallet ─────────────────────────────────────────
         Wallet senderWallet = findWalletOrThrow(currentUser, request.getCurrency());
 
-        // ── 2. Resolve receiver ──────────────────────────────────────────────
+        // ── 4. Idempotency Check ─────────────────────────────────────────────
+        // If this requestId has already been processed for this wallet, return success
+        // This prevents double-spending on client retries
+        Optional<Transaction> existingTx = transactionRepository
+                .findByWalletAndIdempotencyKey(senderWallet, request.getRequestId());
+
+        if (existingTx.isPresent()) {
+            Transaction tx = existingTx.get();
+            log.info("Duplicate request detected for requestId: {}. Returning existing transaction.", request.getRequestId());
+            return new TransferResponse(
+                    "Transfer successful (Duplicate)",
+                    senderWallet.getCurrency(),
+                    tx.getAmount().abs(),
+                    tx.getBalanceAfter(),
+                    request.getReceiverEmail(),
+                    tx.getReference()
+            );
+        }
+
+        // ── 5. Resolve receiver ──────────────────────────────────────────────
         // Use ResourceNotFoundException — don't reveal whether email is registered
         // (same user enumeration principle as auth)
         User receiverUser = userRepository
@@ -140,20 +179,12 @@ public class WalletService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Recipient does not have a " + request.getCurrency() + " wallet"));
 
-        // ── 3. Business rule checks BEFORE acquiring locks ───────────────────
-        // Do these before locking to fail fast without holding DB resources
-
-        // Cannot send money to yourself
-        if (senderWallet.getId().equals(receiverWallet.getId())) {
-            throw new InvalidTransferException("Cannot transfer to yourself");
-        }
-
         // Currencies must match — no cross-currency transfers in week 3
-        if (!senderWallet.getCurrency().equals(receiverWallet.getCurrency())) {
-            throw new InvalidTransferException("Cross-currency transfers are not supported");
+        if (!senderWallet.getCurrency().equals(request.getCurrency())) {
+            throw new InvalidTransferException("Currency mismatch in transfer request");
         }
 
-        // ── 4. Acquire locks in consistent order — prevents deadlock ─────────
+        // ── 6. Acquire locks in consistent order — prevents deadlock ─────────
         // If Thread A locks wallet-1 then waits for wallet-2,
         // and Thread B locks wallet-2 then waits for wallet-1 = DEADLOCK.
         // Thread B will wait for Thread A to release wallet-1 before proceeding.
@@ -163,14 +194,17 @@ public class WalletService {
 
         Wallet firstLock  = walletRepository.findByIdWithLock(senderIsFirst ? id1 : id2)
                 .orElseThrow();
+        entityManager.refresh(firstLock);
+        
         Wallet secondLock = walletRepository.findByIdWithLock(senderIsFirst ? id2 : id1)
                 .orElseThrow();
+        entityManager.refresh(secondLock);
 
         // Re-assign to named variables for clarity
         Wallet lockedSender   = firstLock.getId().equals(id1) ? firstLock : secondLock;
         Wallet lockedReceiver = firstLock.getId().equals(id2) ? firstLock : secondLock;
 
-        // ── 5. Check balance AFTER acquiring lock ────────────────────────────
+        // ── 7. Check balance AFTER acquiring lock ────────────────────────────
         // Must check balance after locking — not before.
         // Checking before and locking after creates a TOCTOU vulnerability:
         // (Time Of Check / Time Of Use — balance could change between check and lock)
@@ -180,7 +214,7 @@ public class WalletService {
                     + " " + lockedSender.getBalance());
         }
 
-        // ── 6. Update balances ───────────────────────────────────────────────
+        // ── 8. Update balances ───────────────────────────────────────────────
         BigDecimal senderNewBalance   = lockedSender.getBalance().subtract(request.getAmount());
         BigDecimal receiverNewBalance = lockedReceiver.getBalance().add(request.getAmount());
 
@@ -190,13 +224,11 @@ public class WalletService {
         walletRepository.save(lockedSender);
         walletRepository.save(lockedReceiver);
 
-        // ── 7. Create linked transaction records ─────────────────────────────
+        // ── 9. Create linked transaction records ─────────────────────────────
         // Two records — one for each side of the transfer
         // They reference each other via relatedTransaction
         String senderRef   = UUID.randomUUID().toString();
         String receiverRef = UUID.randomUUID().toString();
-
-        String transferDescription = buildDescription(request, currentUser, receiverUser);
 
         Transaction debitTx = Transaction.create(
                 lockedSender,
@@ -204,7 +236,8 @@ public class WalletService {
                 request.getAmount(),
                 senderNewBalance,
                 senderRef,
-                "Transfer to " + receiverUser.getEmail()
+                "Transfer to " + receiverUser.getEmail(),
+                request.getRequestId() // Idempotency key
         );
 
         Transaction creditTx = Transaction.create(
@@ -214,16 +247,15 @@ public class WalletService {
                 receiverNewBalance,
                 receiverRef,
                 "Transfer from " + currentUser.getEmail()
-                + (request.getDescription() != null ? ": " + request.getDescription() : "")
+                + (request.getDescription() != null ? ": " + request.getDescription() : ""),
+                request.getRequestId() // Same idempotency key for both sides
         );
 
-        // Save both first, then link — both must exist before we can reference each other
-        transactionRepository.save(debitTx);
-        transactionRepository.save(creditTx);
-
-        // Now link them — each points to the other
+        // Link them BEFORE saving to reduce database round-trips
+        // Hibernate will handle the relationship correctly since IDs are generated on save
         debitTx.setRelatedTransaction(creditTx);
         creditTx.setRelatedTransaction(debitTx);
+
         transactionRepository.save(debitTx);
         transactionRepository.save(creditTx);
 
@@ -276,6 +308,12 @@ public class WalletService {
 
     private Wallet findWalletOrThrow(User user, Currency currency) {
         return walletRepository.findByUserAndCurrency(user, currency)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        currency + " wallet not found"));
+    }
+
+    private Wallet findWalletOrThrowWithLock(User user, Currency currency) {
+        return walletRepository.findByUserAndCurrencyWithLock(user, currency)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         currency + " wallet not found"));
     }

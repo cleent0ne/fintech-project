@@ -26,11 +26,10 @@ import java.util.UUID;
  *    Precision 19 = handles any realistic monetary value.
  *    Scale 4 = covers KWD (3 decimal places) and future currencies.
  *
- * 3. @Version for optimistic locking
- *    Hibernate increments this on every UPDATE.
- *    If two transactions read version=5 and both try to write version=6,
- *    the second one finds version is already 6 — throws OptimisticLockException.
- *    Deposit operations use this. Transfer operations use SELECT FOR UPDATE instead.
+ * 3. Concurrency Control
+ *    Both Deposit and Transfer operations use Pessimistic Locking (SELECT FOR UPDATE).
+ *    This ensures that concurrent modifications to the balance are strictly serialized,
+ *    preventing double-spending and lost updates without throwing OptimisticLockException.
  *
  * 4. balance defaults to ZERO — never null
  *    A null balance would require null checks everywhere money is calculated.
@@ -68,10 +67,6 @@ public class Wallet {
     @Column(nullable = false, precision = 19, scale = 4)
     private BigDecimal balance = BigDecimal.ZERO;
 
-    // Optimistic locking — Hibernate manages this automatically
-    // You never set this field manually
-    @Version
-    private Integer version;
 
     @CreationTimestamp
     @Column(updatable = false)

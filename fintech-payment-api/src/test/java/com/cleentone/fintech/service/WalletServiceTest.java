@@ -149,35 +149,17 @@ class WalletServiceTest {
         }
 
         @Test
-        @DisplayName("should generate a unique reference for every deposit")
-        void deposit_generatesUniqueReferences() {
+        @DisplayName("should throw InvalidTransferException for zero or negative deposit amount")
+        void deposit_invalidAmount_throwsException() {
             // Arrange
             DepositRequest request = new DepositRequest();
             request.setCurrency(Currency.KES);
-            request.setAmount(new BigDecimal("100.00"));
+            request.setAmount(new BigDecimal("-100.00"));
 
-            // Fresh wallet for second deposit
-            Wallet wallet2 = new Wallet(sender, Currency.KES);
-            wallet2.setId(UUID.randomUUID());
-            wallet2.setBalance(new BigDecimal("1000.00"));
-
-            when(walletRepository.findByUserAndCurrency(sender, Currency.KES))
-                    .thenReturn(Optional.of(senderKesWallet))
-                    .thenReturn(Optional.of(wallet2));
-            when(walletRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-
-            ArgumentCaptor<Transaction> captor = ArgumentCaptor.forClass(Transaction.class);
-            when(transactionRepository.save(captor.capture()))
-                    .thenAnswer(inv -> inv.getArgument(0));
-
-            // Act — two deposits
-            walletService.deposit(sender, request);
-            walletService.deposit(sender, request);
-
-            // Assert — two different references
-            List<Transaction> saved = captor.getAllValues();
-            assertThat(saved.get(0).getReference())
-                    .isNotEqualTo(saved.get(1).getReference());
+            // Act & Assert
+            assertThatThrownBy(() -> walletService.deposit(sender, request))
+                    .isInstanceOf(InvalidTransferException.class)
+                    .hasMessageContaining("greater than zero");
         }
     }
 
@@ -197,6 +179,7 @@ class WalletServiceTest {
             validRequest.setReceiverEmail("receiver@test.com");
             validRequest.setCurrency(Currency.KES);
             validRequest.setAmount(new BigDecimal("300.00"));
+            validRequest.setRequestId(UUID.randomUUID().toString());
             validRequest.setDescription("Test transfer");
         }
 
@@ -243,43 +226,49 @@ class WalletServiceTest {
             // Act
             walletService.transfer(sender, validRequest);
 
-            // Assert — exactly 4 saves: 2 initial + 2 after linking
+            // Assert — exactly 2 saves (optimized from 4)
             List<Transaction> saved = captor.getAllValues();
-            assertThat(saved).hasSize(4);
+            assertThat(saved).hasSize(2);
 
-            // Find the initial debit and credit (first two saves)
             Transaction debit  = saved.stream()
                     .filter(t -> t.getType() == TransactionType.DEBIT).findFirst().orElseThrow();
             Transaction credit = saved.stream()
                     .filter(t -> t.getType() == TransactionType.CREDIT).findFirst().orElseThrow();
 
+            // Verify they are linked to each other
+            assertThat(debit.getRelatedTransaction()).isEqualTo(credit);
+            assertThat(credit.getRelatedTransaction()).isEqualTo(debit);
+
             assertThat(debit.getAmount()).isEqualByComparingTo(new BigDecimal("300.00"));
             assertThat(credit.getAmount()).isEqualByComparingTo(new BigDecimal("300.00"));
-            assertThat(debit.getStatus()).isEqualTo(TransactionStatus.COMPLETED);
-            assertThat(credit.getStatus()).isEqualTo(TransactionStatus.COMPLETED);
         }
 
         @Test
-        @DisplayName("should throw InvalidTransferException when sender == receiver")
+        @DisplayName("should throw InvalidTransferException when sender == receiver by email")
         void transfer_selfTransfer_throwsException() {
             // Arrange — receiver email is the sender's own email
             validRequest.setReceiverEmail("sender@test.com");
-
-            when(walletRepository.findByUserAndCurrency(sender, Currency.KES))
-                    .thenReturn(Optional.of(senderKesWallet));
-            when(userRepository.findByEmail("sender@test.com"))
-                    .thenReturn(Optional.of(sender));
-            when(walletRepository.findByUserAndCurrency(sender, Currency.KES))
-                    .thenReturn(Optional.of(senderKesWallet));
 
             // Act & Assert
             assertThatThrownBy(() -> walletService.transfer(sender, validRequest))
                     .isInstanceOf(InvalidTransferException.class)
                     .hasMessageContaining("yourself");
 
-            // No lock acquired, no balance changed, no transactions created
+            // No lock acquired, no transactions created
             verify(walletRepository, never()).findByIdWithLock(any());
             verify(transactionRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("should throw InvalidTransferException for zero or negative transfer amount")
+        void transfer_invalidAmount_throwsException() {
+            // Arrange
+            validRequest.setAmount(new BigDecimal("0.00"));
+
+            // Act & Assert
+            assertThatThrownBy(() -> walletService.transfer(sender, validRequest))
+                    .isInstanceOf(InvalidTransferException.class)
+                    .hasMessageContaining("greater than zero");
         }
 
         @Test

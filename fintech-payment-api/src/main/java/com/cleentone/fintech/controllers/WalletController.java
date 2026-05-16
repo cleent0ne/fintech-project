@@ -5,6 +5,10 @@ import com.cleentone.fintech.model.User;
 import com.cleentone.fintech.model.enums.Currency;
 import com.cleentone.fintech.repository.UserRepository;
 import com.cleentone.fintech.services.WalletService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -29,15 +33,13 @@ import java.util.List;
 @RestController
 @RequestMapping("/wallet")
 @RequiredArgsConstructor
+@SecurityRequirement(name = "bearerAuth")
 public class WalletController {
 
     private final WalletService walletService;
     private final UserRepository userRepository;
 
-    /**
-     * GET /wallet/balances
-     * Returns all wallets for the authenticated user (one per currency)
-     */
+    @Operation(summary = "Get all balances", description = "Returns all wallets and their balances for the authenticated user.")
     @GetMapping("/balances")
     public ResponseEntity<List<WalletResponse>> getAllBalances(
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -46,10 +48,11 @@ public class WalletController {
         return ResponseEntity.ok(walletService.getAllWallets(currentUser));
     }
 
-    /**
-     * GET /wallet/{currency}/balance
-     * Returns one specific wallet — e.g. GET /wallet/KES/balance
-     */
+    @Operation(summary = "Get specific wallet balance", description = "Returns the balance for a specific currency.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Balance retrieved successfully"),
+        @ApiResponse(responseCode = "404", description = "Wallet not found for the specified currency")
+    })
     @GetMapping("/{currency}/balance")
     public ResponseEntity<WalletResponse> getBalance(
             @PathVariable Currency currency,
@@ -59,10 +62,11 @@ public class WalletController {
         return ResponseEntity.ok(walletService.getWallet(currentUser, currency));
     }
 
-    /**
-     * POST /wallet/deposit
-     * Body: { "currency": "KES", "amount": 5000.00 }
-     */
+    @Operation(summary = "Deposit funds", description = "Adds a specified amount to the user's wallet.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Deposit successful"),
+        @ApiResponse(responseCode = "400", description = "Invalid amount or currency")
+    })
     @PostMapping("/deposit")
     public ResponseEntity<WalletResponse> deposit(
             @Valid @RequestBody DepositRequest request,
@@ -72,9 +76,12 @@ public class WalletController {
         return ResponseEntity.ok(walletService.deposit(currentUser, request));
     }
 
-    /**
-     * Body: { "receiverEmail": "...", "currency": "KES", "amount": 500.00, "description": "..." }
-     */
+    @Operation(summary = "Transfer money", description = "Transfers funds between users of the same currency.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Transfer successful"),
+        @ApiResponse(responseCode = "400", description = "Insufficient funds, self-transfer, or invalid input"),
+        @ApiResponse(responseCode = "404", description = "Recipient not found")
+    })
     @PostMapping("/transfer")
     public ResponseEntity<TransferResponse> transfer(
             @Valid @RequestBody TransferRequest request,
@@ -84,10 +91,7 @@ public class WalletController {
         return ResponseEntity.ok(walletService.transfer(currentUser, request));
     }
 
-    /**
-     * GET /wallet/{currency}/transactions?page=0&size=20
-     * Paginated transaction history — most recent first
-     */
+    @Operation(summary = "Get transaction history", description = "Returns a paginated list of transactions for a specific wallet.")
     @GetMapping("/{currency}/transactions")
     public ResponseEntity<Page<TransactionResponse>> getTransactions(
             @PathVariable Currency currency,
@@ -100,13 +104,6 @@ public class WalletController {
                 walletService.getTransactionHistory(currentUser, currency, page, size));
     }
 
-    /**
-     * Resolves the authenticated UserDetails back to the full User entity.
-     *
-     * @AuthenticationPrincipal gives us the Spring Security UserDetails (just email + roles).
-     * We need the full User entity (id, fullName, etc.) for service calls.
-     * This is a lightweight DB call — the user must exist if the token is valid.
-     */
     private User resolveUser(UserDetails userDetails) {
         return userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow();

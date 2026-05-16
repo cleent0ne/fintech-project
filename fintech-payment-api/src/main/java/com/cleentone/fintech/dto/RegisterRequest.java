@@ -27,7 +27,7 @@ public class RegisterRequest {
 //full name validation rules:
     @NotBlank(message = "Full name is required")
     @Size(min = 2, max = 100, message = "Full name must be between 2 and 100 characters")
-    @Pattern(regexp = "^[a-zA-Z\\s]+$", message = "Full name can only contain letters, hyphens, appostrophes, and spaces")
+    @Pattern(regexp = "^[a-zA-Z\\s\\-'.]+$", message = "Full name can only contain letters, hyphens, apostrophes, periods, and spaces")
     @SafeString(message = "Full name contains invalid characters")
     private String fullName;
 }

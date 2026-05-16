@@ -26,6 +26,8 @@ import org.springframework.core.env.Environment;
 @RequiredArgsConstructor
 public class WalletRateLimitFilter extends OncePerRequestFilter {
 
+    @org.springframework.beans.factory.annotation.Value("${app.rate-limit.enabled:true}")
+    private boolean rateLimitEnabled;
 
     // Key = "userId:endpoint" — each user has separate buckets per endpoint type
     // e.g. "550e8400-...:transfer" or "550e8400-...:deposit"
@@ -39,8 +41,8 @@ public class WalletRateLimitFilter extends OncePerRequestFilter {
                                     FilterChain chain)
                                     throws ServletException, IOException {
 
-        // Skip rate limiting in tests to avoid flakiness
-        if (java.util.Arrays.asList(environment.getActiveProfiles()).contains("test")) {
+        // Skip rate limiting if disabled via config or in test profile
+        if (!rateLimitEnabled || java.util.Arrays.asList(environment.getActiveProfiles()).contains("test")) {
             chain.doFilter(req, res);
             return;
         }

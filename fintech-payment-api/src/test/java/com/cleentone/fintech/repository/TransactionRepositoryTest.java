@@ -46,7 +46,7 @@ class TransactionRepositoryTest {
                 wallet, type,
                 new BigDecimal(amount),
                 new BigDecimal(amount),
-                ref, "Test");
+                ref, "Test", null);
         return entityManager.persistAndFlush(tx);
     }
 
@@ -118,7 +118,7 @@ class TransactionRepositoryTest {
         Transaction duplicate = Transaction.create(
                 wallet, TransactionType.CREDIT,
                 new BigDecimal("100.00"), new BigDecimal("100.00"),
-                sameRef, "Duplicate");
+                sameRef, "Duplicate", null);
 
         // DB must reject the duplicate reference
         assertThatThrownBy(() -> entityManager.persistAndFlush(duplicate))

@@ -25,7 +25,9 @@ import java.util.concurrent.TimeUnit;
 @Component
 public class RateLimitFilter extends OncePerRequestFilter {
 
-  
+    @org.springframework.beans.factory.annotation.Value("${app.rate-limit.enabled:true}")
+    private boolean rateLimitEnabled;
+
     private final Cache<String, Bucket> loginBuckets = Caffeine.newBuilder()
             .expireAfterAccess(10, TimeUnit.MINUTES)
             .maximumSize(100_000)
@@ -48,8 +50,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
                                     FilterChain chain)
             throws ServletException, IOException {
 
-        // Skip rate limiting in tests to avoid flakiness
-        if (java.util.Arrays.asList(environment.getActiveProfiles()).contains("test")) {
+        // Skip rate limiting if disabled via config or in test profile
+        if (!rateLimitEnabled || java.util.Arrays.asList(environment.getActiveProfiles()).contains("test")) {
             chain.doFilter(request, response);
             return;
         }
