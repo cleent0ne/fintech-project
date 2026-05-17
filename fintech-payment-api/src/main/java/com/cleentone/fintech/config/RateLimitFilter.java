@@ -22,12 +22,18 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * This filter protects our authentication endpoints from brute-force attacks.
+ * It tracks how many requests are coming from each IP address and blocks them 
+ * if they start hitting the API too fast.
+ */
 @Component
 public class RateLimitFilter extends OncePerRequestFilter {
 
     @org.springframework.beans.factory.annotation.Value("${app.rate-limit.enabled:true}")
     private boolean rateLimitEnabled;
 
+    // We store the "buckets" for each IP in a cache that expires after 10 minutes of inactivity.
     private final Cache<String, Bucket> loginBuckets = Caffeine.newBuilder()
             .expireAfterAccess(10, TimeUnit.MINUTES)
             .maximumSize(100_000)
@@ -50,7 +56,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
                                     FilterChain chain)
             throws ServletException, IOException {
 
-        // Skip rate limiting if disabled via config or in test profile
+        // We can skip rate limiting if it's disabled or if we're running tests.
         if (!rateLimitEnabled || java.util.Arrays.asList(environment.getActiveProfiles()).contains("test")) {
             chain.doFilter(request, response);
             return;
@@ -58,7 +64,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
         String path = request.getRequestURI();
 
-      
+        // This particular filter only cares about login and registration attempts.
         if (!path.startsWith("/auth/login") && !path.startsWith("/auth/register")) {
             chain.doFilter(request, response);
             return;
@@ -69,10 +75,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
                 ? loginBuckets.get(clientIp, k -> createLoginBucket())
                 : registerBuckets.get(clientIp, k -> createRegisterBucket());
 
+        // Try to "consume" a token from the bucket. If it's empty, the user is going too fast.
         if (bucket.tryConsume(1)) {
             chain.doFilter(request, response);
         } else {
-            // Rate limit exceeded — return 429
+            // Too many requests! Send back a 429 status.
             response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
             response.getWriter().write(
@@ -82,27 +89,28 @@ public class RateLimitFilter extends OncePerRequestFilter {
         }
     }
 
+    /**
+     * Creates a bucket that allows 10 login attempts per minute.
+     */
     private Bucket createLoginBucket() {
-        // 10 attempts per minute
         return Bucket.builder()
                 .addLimit(Bandwidth.classic(10, Refill.intervally(10, Duration.ofMinutes(1))))
                 .build();
     }
 
+    /**
+     * Registration is more expensive, so we're stricter here: only 5 attempts per minute.
+     */
     private Bucket createRegisterBucket() {
-       
         return Bucket.builder()
                 .addLimit(Bandwidth.classic(5, Refill.intervally(5, Duration.ofMinutes(1))))
                 .build();
     }
 
     /**
-     * Resolves the real client IP.
-     *
-     * X-Forwarded-For is only trusted when the TCP connection originates from a
-     * private/loopback address (i.e., a trusted load balancer or reverse proxy).
-     * Accepting it unconditionally would let any client spoof their IP to bypass
-     * rate limiting.
+     * Resolves the real IP address of the client.
+     * We're careful here to only trust the X-Forwarded-For header if it comes 
+     * from a trusted local proxy, otherwise anyone could spoof their IP.
      */
     private String getClientIp(HttpServletRequest request) {
         String remoteAddr = request.getRemoteAddr();
@@ -110,7 +118,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
         if (isTrustedProxy(remoteAddr)) {
             String forwarded = request.getHeader("X-Forwarded-For");
             if (forwarded != null && !forwarded.isBlank()) {
-                // First IP in the chain is the original client
+                // The first IP in the list is the original client.
                 return forwarded.split(",")[0].trim();
             }
         }
@@ -119,8 +127,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     /**
-     * Returns true if the given IP is a loopback or private-range address —
-     * the only addresses that should be sending X-Forwarded-For headers.
+     * Checks if the IP address is within a private or loopback range.
      */
     private boolean isTrustedProxy(String ip) {
         if (ip == null) return false;
@@ -132,7 +139,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     private boolean isIn172PrivateRange(String ip) {
-        // 172.16.0.0 – 172.31.255.255
+        // Standard check for the 172.16.0.0 – 172.31.255.255 range.
         try {
             String[] parts = ip.split("\\.");
             int second = Integer.parseInt(parts[1]);

@@ -25,8 +25,12 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * An immutable record of every movement of money in the system.
+ * Whether it's a deposit or a transfer, we capture it here for history and auditing.
+ */
 @Entity
-@Table(name = "transactions",indexes = @Index(columnList = "wallet_id"))
+@Table(name = "transactions", indexes = @Index(columnList = "wallet_id"))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -36,6 +40,7 @@ public class Transaction {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    // Every transaction belongs to exactly one wallet.
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "wallet_id", nullable = false)
     private Wallet wallet;
@@ -47,12 +52,16 @@ public class Transaction {
     @Column(nullable = false, precision = 19, scale = 4)
     private BigDecimal amount;
 
+    // Storing the balance after the transaction helps us reconstruct the history
+    // and verify the integrity of the wallet's current balance.
     @Column(nullable = false, precision = 19, scale = 4)
     private BigDecimal balanceAfter;
 
+    // A unique reference that we can share with the user or use for external tracking.
     @Column(unique = true, nullable = false)
     private String reference;
 
+    // This key helps us prevent processing the same request twice.
     @Column(nullable = true)
     private String idempotencyKey;
 
@@ -61,6 +70,7 @@ public class Transaction {
 
     private String description;
 
+    // For transfers, we link the debit and credit sides together.
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "related_transaction_id")
     private Transaction relatedTransaction;
@@ -69,7 +79,9 @@ public class Transaction {
     @Column(updatable = false)
     private LocalDateTime createdAt;
 
-    
+    /**
+     * A factory method to quickly build a new Transaction record.
+     */
     public static Transaction create(
             Wallet wallet,
             TransactionType type,
@@ -89,6 +101,4 @@ public class Transaction {
         tx.idempotencyKey = idempotencyKey;
         return tx;
     }
-
-
 }

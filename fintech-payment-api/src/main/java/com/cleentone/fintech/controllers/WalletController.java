@@ -20,15 +20,11 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 /**
- * Wallet endpoints — all require authentication (no permitAll in SecurityConfig).
- *
- * Controllers are dumb:
- * - Receive request
- * - Resolve current user from SecurityContext
- * - Call WalletService
- * - Return response
- *
- * Zero business logic here.
+ * This controller handles everything related to a user's wallet. 
+ * Whether you want to check your balance, deposit some cash, or send money 
+ * to a friend, these are the endpoints you'll use. 
+ * 
+ * All of these require you to be logged in (Authenticated).
  */
 @RestController
 @RequestMapping("/wallet")
@@ -39,15 +35,22 @@ public class WalletController {
     private final WalletService walletService;
     private final UserRepository userRepository;
 
+    /**
+     * Shows all the wallets the user has (e.g., KES, USD) and their current balances.
+     */
     @Operation(summary = "Get all balances", description = "Returns all wallets and their balances for the authenticated user.")
     @GetMapping("/balances")
     public ResponseEntity<List<WalletResponse>> getAllBalances(
             @AuthenticationPrincipal UserDetails userDetails) {
 
+        // We resolve the current user from the authentication token.
         User currentUser = resolveUser(userDetails);
         return ResponseEntity.ok(walletService.getAllWallets(currentUser));
     }
 
+    /**
+     * Checks the balance for a specific currency wallet.
+     */
     @Operation(summary = "Get specific wallet balance", description = "Returns the balance for a specific currency.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Balance retrieved successfully"),
@@ -62,6 +65,9 @@ public class WalletController {
         return ResponseEntity.ok(walletService.getWallet(currentUser, currency));
     }
 
+    /**
+     * Adds funds to the user's wallet.
+     */
     @Operation(summary = "Deposit funds", description = "Adds a specified amount to the user's wallet.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Deposit successful"),
@@ -76,6 +82,9 @@ public class WalletController {
         return ResponseEntity.ok(walletService.deposit(currentUser, request));
     }
 
+    /**
+     * The main endpoint for sending money to another user's wallet.
+     */
     @Operation(summary = "Transfer money", description = "Transfers funds between users of the same currency.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Transfer successful"),
@@ -91,6 +100,9 @@ public class WalletController {
         return ResponseEntity.ok(walletService.transfer(currentUser, request));
     }
 
+    /**
+     * Returns a paginated history of all transactions (deposits and transfers) for a wallet.
+     */
     @Operation(summary = "Get transaction history", description = "Returns a paginated list of transactions for a specific wallet.")
     @GetMapping("/{currency}/transactions")
     public ResponseEntity<Page<TransactionResponse>> getTransactions(
@@ -104,6 +116,9 @@ public class WalletController {
                 walletService.getTransactionHistory(currentUser, currency, page, size));
     }
 
+    /**
+     * A helper to quickly get our User entity from Spring Security's UserDetails.
+     */
     private User resolveUser(UserDetails userDetails) {
         return userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow();

@@ -26,6 +26,10 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
+/**
+ * This controller handles all the entry points for user authentication.
+ * If you need to sign up, log in, or log out, this is the place.
+ */
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
@@ -36,6 +40,9 @@ public class AuthController {
     private final JwtUtil jwtUtil;
     private final TokenBlacklistService tokenBlacklistService;
 
+    /**
+     * Entry point for new users to create an account.
+     */
     @Operation(summary = "Register a new user", description = "Creates a new user account and initializes default wallets.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "201", description = "User successfully registered"),
@@ -44,10 +51,14 @@ public class AuthController {
     })
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
+        // We delegate the heavy lifting to the authService.
         AuthResponse response = authService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    /**
+     * Authenticates a user and gives them a JWT they can use for subsequent requests.
+     */
     @Operation(summary = "Authenticate user", description = "Verifies credentials and returns a JWT token.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Successfully authenticated"),
@@ -59,22 +70,32 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
+    /**
+     * Logs the user out by blacklisting their current JWT.
+     */
     @Operation(summary = "Logout user", description = "Invalidates the current session token.")
     @PostMapping("/logout")
     public ResponseEntity<Map<String, String>> logout(HttpServletRequest request) {
         String authHeader = request.getHeader("Authorization");
+        
+        // We pull the token out of the header and blacklist it until it naturally expires.
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
             String jti = jwtUtil.extractJti(token);
             tokenBlacklistService.blacklist(jti, jwtUtil.extractExpiration(token));
         }
+        
         return ResponseEntity.ok(Map.of("message", "Logged out successfully"));
     }
 
+    /**
+     * A handy endpoint for a logged-in user to see their own profile details.
+     */
     @Operation(summary = "Get current user info", description = "Returns the details of the authenticated user.")
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/me")
     public ResponseEntity<UserResponse> me(@AuthenticationPrincipal UserDetails userDetails) {
+        // We find the user based on the email provided by Spring Security's context.
         User user = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         return ResponseEntity.ok(UserResponse.from(user));

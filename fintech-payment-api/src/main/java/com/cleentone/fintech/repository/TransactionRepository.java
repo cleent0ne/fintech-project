@@ -10,18 +10,31 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 import java.util.UUID;
 
+/**
+ * Repository for managing our Transaction audit logs.
+ */
 @Repository
 public interface TransactionRepository extends JpaRepository<Transaction, UUID> {
 
-    
+    /**
+     * Finds all transactions for a specific wallet, with support for pagination.
+     */
     Page<Transaction> findByWallet(Wallet wallet, Pageable pageable);
 
-    // Idempotency check — does a transaction with this reference already exist?
+    /**
+     * Checks if a transaction with a given reference already exists.
+     */
     boolean existsByReference(String reference);
 
-    // Fetch a specific transaction by reference — for status lookups
+    /**
+     * Looks up a specific transaction by its unique reference string.
+     */
     Optional<Transaction> findByReference(String reference);
 
-    // Idempotency check — has this specific operation already happened for this wallet?
+    /**
+     * A critical check for idempotency: we see if a specific request (identified by its 
+     * idempotencyKey) has already been processed for a wallet. This prevents 
+     * double-spending if a client retries a request.
+     */
     Optional<Transaction> findByWalletAndIdempotencyKey(Wallet wallet, String idempotencyKey);
 }

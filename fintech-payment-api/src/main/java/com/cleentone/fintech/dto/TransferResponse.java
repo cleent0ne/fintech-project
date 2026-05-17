@@ -7,7 +7,9 @@ import lombok.Getter;
 
 import java.math.BigDecimal;
 
-
+/**
+ * The confirmation data we send back after a successful transfer.
+ */
 @Getter
 @AllArgsConstructor
 public class TransferResponse {
@@ -22,6 +24,7 @@ public class TransferResponse {
     @JsonProperty("receiver_email")
     private String receiverEmail;
 
+    // A unique reference number for the user's records.
     @JsonProperty("transaction_reference")
     private String transactionReference;  
 }

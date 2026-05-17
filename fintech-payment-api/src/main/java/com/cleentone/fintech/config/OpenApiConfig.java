@@ -6,6 +6,11 @@ import io.swagger.v3.oas.annotations.info.Info;
 import io.swagger.v3.oas.annotations.security.SecurityScheme;
 import org.springframework.context.annotation.Configuration;
 
+/**
+ * This class configures Swagger (OpenAPI) for our project. 
+ * It sets the title and description for the documentation UI and tells 
+ * Swagger how to handle our JWT-based authentication.
+ */
 @Configuration
 @OpenAPIDefinition(
     info = @Info(
@@ -21,4 +26,5 @@ import org.springframework.context.annotation.Configuration;
     scheme = "bearer"
 )
 public class OpenApiConfig {
+    // This is a configuration-only class, no logic needed here!
 }

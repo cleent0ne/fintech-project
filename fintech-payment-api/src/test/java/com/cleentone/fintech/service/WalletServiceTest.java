@@ -15,6 +15,7 @@ import com.cleentone.fintech.repository.TransactionRepository;
 import com.cleentone.fintech.repository.UserRepository;
 import com.cleentone.fintech.repository.WalletRepository;
 import com.cleentone.fintech.services.WalletService;
+import jakarta.persistence.EntityManager;
 
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,6 +37,7 @@ class WalletServiceTest {
     @Mock private WalletRepository walletRepository;
     @Mock private TransactionRepository transactionRepository;
     @Mock private UserRepository userRepository;
+    @Mock private EntityManager entityManager;
 
     @InjectMocks private WalletService walletService;
 
@@ -83,7 +85,7 @@ class WalletServiceTest {
             request.setCurrency(Currency.KES);
             request.setAmount(new BigDecimal("500.00"));
 
-            when(walletRepository.findByUserAndCurrency(sender, Currency.KES))
+            when(walletRepository.findByUserAndCurrencyWithLock(sender, Currency.KES))
                     .thenReturn(Optional.of(senderKesWallet));
             when(walletRepository.save(any(Wallet.class)))
                     .thenAnswer(inv -> inv.getArgument(0));
@@ -106,7 +108,7 @@ class WalletServiceTest {
             request.setCurrency(Currency.KES);
             request.setAmount(new BigDecimal("200.00"));
 
-            when(walletRepository.findByUserAndCurrency(sender, Currency.KES))
+            when(walletRepository.findByUserAndCurrencyWithLock(sender, Currency.KES))
                     .thenReturn(Optional.of(senderKesWallet));
             when(walletRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -136,7 +138,7 @@ class WalletServiceTest {
             request.setCurrency(Currency.USD);
             request.setAmount(new BigDecimal("100.00"));
 
-            when(walletRepository.findByUserAndCurrency(sender, Currency.USD))
+            when(walletRepository.findByUserAndCurrencyWithLock(sender, Currency.USD))
                     .thenReturn(Optional.empty());
 
             // Act & Assert

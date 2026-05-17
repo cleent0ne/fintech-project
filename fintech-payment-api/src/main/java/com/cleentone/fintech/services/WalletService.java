@@ -26,6 +26,10 @@ import java.util.stream.Collectors;
 
 import jakarta.persistence.EntityManager;
 
+/**
+ * This is the heart of our payment system. It handles everything from 
+ * creating wallets for new users to processing complex, thread-safe transfers.
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -36,18 +40,16 @@ public class WalletService {
     private final UserRepository userRepository;
     private final EntityManager entityManager;
 
-    // ─── WALLET CREATION ─────────────────────────────────────────────────────
-
     /**
-     * Creates one wallet per currency for a newly registered user.
-     * Called by AuthService.register() — not exposed as an API endpoint.
-     *
-     * Uses existsByUserAndCurrency() to prevent duplicates on retry.
+     * When a new user joins, we automatically set them up with wallets for 
+     * every currency we support (currently KES and USD). 
+     * We start them all at zero.
      */
     @Transactional
     public void createDefaultWallets(User user) {
         for (Currency currency : Currency.values()) {
-            // Idempotent — safe to call multiple times (registration retry)
+            // We check if the wallet already exists just in case a registration 
+            // is retried, avoiding duplicate wallet errors.
             if (!walletRepository.existsByUserAndCurrency(user, currency)) {
                 walletRepository.save(new Wallet(user, currency));
             }
@@ -55,11 +57,8 @@ public class WalletService {
         log.info("Created default wallets for user: {}", user.getId());
     }
 
-    // ─── BALANCE QUERIES ─────────────────────────────────────────────────────
-
     /**
-     * Returns all wallets for the authenticated user.
-     * GET /wallet/balances
+     * Fetches all wallets belonging to the current user.
      */
     public List<WalletResponse> getAllWallets(User currentUser) {
         return walletRepository.findByUser(currentUser)
@@ -69,38 +68,33 @@ public class WalletService {
     }
 
     /**
-     * Returns one specific wallet.
-     * GET /wallet/{currency}/balance
+     * Fetches a specific wallet by its currency.
      */
     public WalletResponse getWallet(User currentUser, Currency currency) {
         Wallet wallet = findWalletOrThrow(currentUser, currency);
         return WalletResponse.from(wallet);
     }
 
-    // ─── DEPOSIT ─────────────────────────────────────────────────────────────
-
     /**
-     * Adds funds to a wallet.
-     * POST /wallet/deposit
-     *
-     * @Transactional — balance update and transaction record are one atomic operation.
-     * If the transaction record creation fails, the balance update rolls back.
+     * Handles adding money to a user's wallet.
+     * We use @Transactional to ensure that both the balance update and 
+     * the transaction audit log are saved together—all or nothing.
      */
     @Transactional
     public WalletResponse deposit(User currentUser, DepositRequest request) {
-        // Defensive check — amount must be positive
+        // Basic check to make sure nobody tries to deposit zero or negative money.
         if (request.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
             throw new InvalidTransferException("Deposit amount must be greater than zero");
         }
 
+        // We lock the wallet during the update to prevent any race conditions.
         Wallet wallet = findWalletOrThrowWithLock(currentUser, request.getCurrency());
 
-        // Add to balance — BigDecimal.add() returns a new object, never mutates
         BigDecimal newBalance = wallet.getBalance().add(request.getAmount());
         wallet.setBalance(newBalance);
         walletRepository.save(wallet);
 
-        // Create immutable record of this deposit
+        // Record the deposit in the audit log.
         String reference = UUID.randomUUID().toString();
         Transaction tx = Transaction.create(
                 wallet,
@@ -109,7 +103,7 @@ public class WalletService {
                 newBalance,
                 reference,
                 "Deposit",
-                null // Deposits are not idempotent-checked in this version
+                null
         );
         transactionRepository.save(tx);
 
@@ -119,37 +113,33 @@ public class WalletService {
         return WalletResponse.from(wallet);
     }
 
-    // ─── TRANSFER ────────────────────────────────────────────────────────────
-
     /**
-     * Transfers money between two users' wallets.
-     * POST /wallet/transfer
-     *
-     * This is the most critical method in the system.
-     * Read every line carefully — each one prevents a specific failure mode.
-     *
-     * @Transactional — the entire operation is atomic.
-     * A crash at any point rolls back all changes.
+     * This is the most critical part of the code: moving money from one user to another.
+     * It's wrapped in a @Transactional to ensure atomic success or failure.
+     * 
+     * We've implemented several layers of protection here:
+     * 1. Idempotency checks to prevent double-spending on retries.
+     * 2. Pessimistic locking to handle high-concurrency environments.
+     * 3. Consistent lock ordering to prevent deadlocks.
      */
     @Transactional
     public TransferResponse transfer(User currentUser, TransferRequest request) {
 
-        // ── 1. Defensive amount check ───────────────────────────────────────
+        // Validate the amount first.
         if (request.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
             throw new InvalidTransferException("Transfer amount must be greater than zero");
         }
 
-        // ── 2. Self-transfer check (fail fast before DB calls) ──────────────
+        // You shouldn't be able to send money to yourself.
         if (currentUser.getEmail().equalsIgnoreCase(request.getReceiverEmail().trim())) {
             throw new InvalidTransferException("Cannot transfer to yourself");
         }
 
-        // ── 3. Resolve sender wallet ─────────────────────────────────────────
         Wallet senderWallet = findWalletOrThrow(currentUser, request.getCurrency());
 
-        // ── 4. Idempotency Check ─────────────────────────────────────────────
-        // If this requestId has already been processed for this wallet, return success
-        // This prevents double-spending on client retries
+        // IDEMPOTENCY CHECK:
+        // We check if this specific request (by its ID) has already been processed.
+        // If it has, we just return the previous result instead of doing it again.
         Optional<Transaction> existingTx = transactionRepository
                 .findByWalletAndIdempotencyKey(senderWallet, request.getRequestId());
 
@@ -166,9 +156,8 @@ public class WalletService {
             );
         }
 
-        // ── 5. Resolve receiver ──────────────────────────────────────────────
-        // Use ResourceNotFoundException — don't reveal whether email is registered
-        // (same user enumeration principle as auth)
+        // Look up the receiver. We use a generic error message if not found 
+        // to avoid leaking whether a specific email exists in our system.
         User receiverUser = userRepository
                 .findByEmail(request.getReceiverEmail().toLowerCase().trim())
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -179,15 +168,14 @@ public class WalletService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Recipient does not have a " + request.getCurrency() + " wallet"));
 
-        // Currencies must match — no cross-currency transfers in week 3
+        // Basic check for currency mismatch (though unlikely given the lookup logic).
         if (!senderWallet.getCurrency().equals(request.getCurrency())) {
             throw new InvalidTransferException("Currency mismatch in transfer request");
         }
 
-        // ── 6. Acquire locks in consistent order — prevents deadlock ─────────
-        // If Thread A locks wallet-1 then waits for wallet-2,
-        // and Thread B locks wallet-2 then waits for wallet-1 = DEADLOCK.
-        // Thread B will wait for Thread A to release wallet-1 before proceeding.
+        // DEADLOCK PREVENTION:
+        // When locking two resources, always lock them in the same order (sorted by ID).
+        // This ensures two concurrent transfers between the same people don't get stuck.
         UUID id1 = senderWallet.getId();
         UUID id2 = receiverWallet.getId();
         boolean senderIsFirst = id1.compareTo(id2) < 0;
@@ -200,21 +188,17 @@ public class WalletService {
                 .orElseThrow();
         entityManager.refresh(secondLock);
 
-        // Re-assign to named variables for clarity
         Wallet lockedSender   = firstLock.getId().equals(id1) ? firstLock : secondLock;
         Wallet lockedReceiver = firstLock.getId().equals(id2) ? firstLock : secondLock;
 
-        // ── 7. Check balance AFTER acquiring lock ────────────────────────────
-        // Must check balance after locking — not before.
-        // Checking before and locking after creates a TOCTOU vulnerability:
-        // (Time Of Check / Time Of Use — balance could change between check and lock)
+        // Final balance check after we've successfully locked both wallets.
         if (lockedSender.getBalance().compareTo(request.getAmount()) < 0) {
             throw new InsufficientFundsException(
                     "Insufficient funds. Available: " + lockedSender.getCurrency()
                     + " " + lockedSender.getBalance());
         }
 
-        // ── 8. Update balances ───────────────────────────────────────────────
+        // Update the balances.
         BigDecimal senderNewBalance   = lockedSender.getBalance().subtract(request.getAmount());
         BigDecimal receiverNewBalance = lockedReceiver.getBalance().add(request.getAmount());
 
@@ -224,9 +208,7 @@ public class WalletService {
         walletRepository.save(lockedSender);
         walletRepository.save(lockedReceiver);
 
-        // ── 9. Create linked transaction records ─────────────────────────────
-        // Two records — one for each side of the transfer
-        // They reference each other via relatedTransaction
+        // Create transaction records for both sides of the transfer.
         String senderRef   = UUID.randomUUID().toString();
         String receiverRef = UUID.randomUUID().toString();
 
@@ -237,7 +219,7 @@ public class WalletService {
                 senderNewBalance,
                 senderRef,
                 "Transfer to " + receiverUser.getEmail(),
-                request.getRequestId() // Idempotency key
+                request.getRequestId()
         );
 
         Transaction creditTx = Transaction.create(
@@ -248,11 +230,10 @@ public class WalletService {
                 receiverRef,
                 "Transfer from " + currentUser.getEmail()
                 + (request.getDescription() != null ? ": " + request.getDescription() : ""),
-                request.getRequestId() // Same idempotency key for both sides
+                request.getRequestId()
         );
 
-        // Link them BEFORE saving to reduce database round-trips
-        // Hibernate will handle the relationship correctly since IDs are generated on save
+        // Link the two transactions together for auditing.
         debitTx.setRelatedTransaction(creditTx);
         creditTx.setRelatedTransaction(debitTx);
 
@@ -273,14 +254,10 @@ public class WalletService {
         );
     }
 
-    // ─── TRANSACTION HISTORY ─────────────────────────────────────────────────
-
     /**
-     * Returns paginated transaction history for one wallet.
-     * GET /wallet/{currency}/transactions
-     *
-     * Always paginated — never return all transactions unbounded.
-     * A wallet with 100,000 transactions would crash the server without pagination.
+     * Fetches a history of all transactions for a wallet.
+     * We always use pagination here because returning thousands of 
+     * transactions in one go could easily overwhelm the system.
      */
     public Page<TransactionResponse> getTransactionHistory(
             User currentUser,
@@ -288,7 +265,7 @@ public class WalletService {
             int page,
             int size) {
 
-        // Clamp page size — prevent client requesting 10,000 records per page
+        // We limit the page size to 100 for safety.
         int safeSize = Math.min(size, 100);
 
         Wallet wallet = findWalletOrThrow(currentUser, currency);
@@ -296,7 +273,7 @@ public class WalletService {
         PageRequest pageRequest = PageRequest.of(
                 page,
                 safeSize,
-                Sort.by("createdAt").descending()  // newest first
+                Sort.by("createdAt").descending()
         );
 
         return transactionRepository
@@ -304,8 +281,8 @@ public class WalletService {
                 .map(TransactionResponse::from);
     }
 
-    // ─── HELPERS ─────────────────────────────────────────────────────────────
-
+    // Helper methods for looking up wallets.
+    
     private Wallet findWalletOrThrow(User user, Currency currency) {
         return walletRepository.findByUserAndCurrency(user, currency)
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -316,12 +293,5 @@ public class WalletService {
         return walletRepository.findByUserAndCurrencyWithLock(user, currency)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         currency + " wallet not found"));
-    }
-
-    private String buildDescription(TransferRequest request, User sender, User receiver) {
-        String base = "Transfer from " + sender.getEmail() + " to " + receiver.getEmail();
-        return request.getDescription() != null
-                ? base + ": " + request.getDescription()
-                : base;
     }
 }

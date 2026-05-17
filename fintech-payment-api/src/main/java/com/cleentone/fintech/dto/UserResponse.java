@@ -8,10 +8,14 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import lombok.Getter;
 
+/**
+ * A user profile representation, safe to return over the API.
+ * We're careful not to include sensitive info like password hashes here.
+ */
 @Getter
 public class UserResponse {
     
-   private UUID id;
+    private UUID id;
     private String email;
  
     @JsonProperty("full_name")
@@ -20,6 +24,9 @@ public class UserResponse {
     @JsonProperty("created_at")
     private LocalDateTime createdAt;
 
+    /**
+     * Maps a User entity to this response DTO.
+     */
     public static UserResponse from(User user) {
         UserResponse response = new UserResponse();
         response.id = user.getId();
@@ -28,5 +35,4 @@ public class UserResponse {
         response.createdAt = user.getCreatedAt();
         return response;
     }
-
 }
