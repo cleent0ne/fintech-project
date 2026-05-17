@@ -22,6 +22,11 @@ import com.cleentone.fintech.repository.WalletRepository;
 
 import lombok.RequiredArgsConstructor;
 
+/**
+ * This service handles all things related to authentication and user onboarding.
+ * It takes care of registering new users, setting up their initial wallets,
+ * and managing logins.
+ */
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -33,38 +38,51 @@ public class AuthService {
 
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(AuthService.class);
 
-    
     @Value("${spring.jwt.expiration-ms}")
     private long jwtExpirationMs;
 
+    /**
+     * Handles new user registration.
+     * We first check if the email is already taken, then create the user and
+     * set up their default wallets (KES and USD).
+     */
     public AuthResponse register(RegisterRequest request) {
+        // First things first, we can't have two users with the same email.
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new EmailAlreadyExistsException("Email already Exists");
         }
 
+        // Let's create the new user record. We make sure to normalize the email
+        // and securely hash the password before saving.
         User user = new User();
         user.setEmail(request.getEmail().toLowerCase().trim());
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         user.setFullName(request.getFullName());
         userRepository.save(user);
 
-        // Call this inside register() after userRepository.save(user):
-createDefaultWallets(user);
+        // Every new user needs some wallets to start with.
+        createDefaultWallets(user);
 
+        // Now we generate a JWT so the user can start using the API immediately.
         String token = jwtUtil.generateToken(user.getEmail());
         return AuthResponse.builder()
                 .token(token)
                 .email(user.getEmail())
                 .message("Registration successful")
-                .expiresIn(jwtExpirationMs / 1000) // convert ms → seconds for the client
+                .expiresIn(jwtExpirationMs / 1000) // The client expects seconds, but we store milliseconds.
                 .build();
     }
 
+    /**
+     * Authenticates a user and returns a fresh JWT.
+     */
     public AuthResponse login(LoginRequest request) {
-        
+        // We look up the user by email. If they don't exist, we throw a generic 
+        // error to avoid giving away which emails are registered.
         User user = userRepository.findByEmail(request.getEmail().toLowerCase().trim())
                 .orElseThrow(() -> new InvalidCredentialsException("Invalid email or password"));
 
+        // Check if the provided password matches the hashed one in our database.
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             throw new InvalidCredentialsException("Invalid email or password");
         }
@@ -88,9 +106,14 @@ createDefaultWallets(user);
         Currency.USD
     );
     
+    /**
+     * Set up the initial wallets for a new user.
+     * Currently, we give everyone a KES and a USD wallet.
+     */
     private void createDefaultWallets(User user) {
         for (Currency currency : DEFAULT_CURRENCIES) {
     
+            // Just a safety check to make sure we're not trying to create unsupported wallets.
             if (!SUPPORTED.contains(currency)) {
                 throw new IllegalStateException("Currency not supported: " + currency);
             }
@@ -101,7 +124,4 @@ createDefaultWallets(user);
             log.info("Wallet created: user={}, currency={}", user.getEmail(), currency);
         }
     }
-
-  
-
 }

@@ -14,26 +14,16 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
- * A wallet holds a user's balance in one specific currency.
- *
- * Design decisions:
- *
- * 1. One wallet per user per currency (enforced by @UniqueConstraint)
- *    A user has a KES wallet AND a USD wallet — never two KES wallets.
- *
- * 2. BigDecimal(19,4) for balance — NEVER Double or Float
- *    Floating point cannot represent 0.1 exactly. In money, that matters.
- *    Precision 19 = handles any realistic monetary value.
- *    Scale 4 = covers KWD (3 decimal places) and future currencies.
- *
- * 3. Concurrency Control
- *    Both Deposit and Transfer operations use Pessimistic Locking (SELECT FOR UPDATE).
- *    This ensures that concurrent modifications to the balance are strictly serialized,
- *    preventing double-spending and lost updates without throwing OptimisticLockException.
- *
- * 4. balance defaults to ZERO — never null
- *    A null balance would require null checks everywhere money is calculated.
- *    Zero is always safe to add to or subtract from.
+ * A wallet holds a user's money in a specific currency.
+ * 
+ * Some quick design notes:
+ * - We only allow one wallet per currency for each user.
+ * - We use BigDecimal for the balance because using Double or Float with money 
+ *   is a recipe for rounding disasters.
+ * - We default the balance to zero to avoid annoying null checks.
+ * - We use pessimistic locking in the service layer when updating balances 
+ *   to keep everything safe and consistent even if multiple transactions 
+ *   hit the same wallet at once.
  */
 @Entity
 @Table(
@@ -52,8 +42,8 @@ public class Wallet {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    // LAZY fetch — we don't need full User object every time we load a wallet
-    // Use user_id for ownership checks, only load User when you need their details
+    // We link the wallet to its owner. We use lazy loading here because 
+    // we don't always need to fetch all the user's profile info just to check a balance.
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
@@ -62,21 +52,18 @@ public class Wallet {
     @Column(nullable = false, length = 3)
     private Currency currency;
 
-    // DECIMAL(19,4) in the database — exact decimal arithmetic
-    // Never use Float or Double for monetary values
+    // Precision 19, scale 4 gives us plenty of room for large amounts and high precision.
     @Column(nullable = false, precision = 19, scale = 4)
     private BigDecimal balance = BigDecimal.ZERO;
-
 
     @CreationTimestamp
     @Column(updatable = false)
     private LocalDateTime createdAt;
 
-    // Useful for auditing — "when was this wallet last used?"
+    // This helps us see when the wallet was last active (deposited or transferred).
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 
-    // Convenience constructor for wallet creation at registration
     public Wallet(User user, Currency currency) {
         this.user = user;
         this.currency = currency;

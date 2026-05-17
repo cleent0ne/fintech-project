@@ -10,7 +10,9 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-
+/**
+ * A user-friendly representation of a transaction record.
+ */
 @Getter
 public class TransactionResponse {
 
@@ -29,12 +31,16 @@ public class TransactionResponse {
     @JsonProperty("balance_after")
     private BigDecimal balanceAfter;
 
+    // For transfers, this links to the transaction on the other person's side.
     @JsonProperty("related_transaction_id")
-    private UUID relatedTransactionId;  // The other side of this transfer (nullable for deposits)
+    private UUID relatedTransactionId;
 
     @JsonProperty("created_at")
     private LocalDateTime createdAt;
 
+    /**
+     * Converts a Transaction entity into this response object.
+     */
     public static TransactionResponse from(Transaction transaction) {
         TransactionResponse response = new TransactionResponse();
         response.id = transaction.getId();

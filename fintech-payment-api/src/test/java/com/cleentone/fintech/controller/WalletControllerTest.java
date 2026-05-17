@@ -252,6 +252,7 @@ class WalletControllerTest {
                     "receiverEmail":"receiver@test.com",
                     "currency":"KES",
                     "amount":300.00,
+                    "requestId":"req-123",
                     "description":"Test"
                 }
                 """;
@@ -274,7 +275,7 @@ class WalletControllerTest {
                     .thenThrow(new InsufficientFundsException("Insufficient funds"));
 
             String body = """
-                {"receiverEmail":"r@test.com","currency":"KES","amount":9999.00}
+                {"receiverEmail":"r@test.com","currency":"KES","amount":9999.00,"requestId":"req-456"}
                 """;
 
             mockMvc.perform(post("/wallet/transfer")
@@ -293,7 +294,7 @@ class WalletControllerTest {
                     .thenThrow(new InvalidTransferException("Cannot transfer to yourself"));
 
             String body = """
-                {"receiverEmail":"me@test.com","currency":"KES","amount":100.00}
+                {"receiverEmail":"me@test.com","currency":"KES","amount":100.00,"requestId":"req-789"}
                 """;
 
             mockMvc.perform(post("/wallet/transfer")
@@ -313,7 +314,7 @@ class WalletControllerTest {
                     .thenThrow(new ResourceNotFoundException("Recipient not found"));
 
             String body = """
-                {"receiverEmail":"ghost@test.com","currency":"KES","amount":100.00}
+                {"receiverEmail":"ghost@test.com","currency":"KES","amount":100.00,"requestId":"req-abc"}
                 """;
 
             mockMvc.perform(post("/wallet/transfer")

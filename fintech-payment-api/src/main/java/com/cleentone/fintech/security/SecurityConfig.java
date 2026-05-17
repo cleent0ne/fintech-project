@@ -24,6 +24,11 @@ import com.cleentone.fintech.config.JwtAuthFilter;
 import com.cleentone.fintech.config.RateLimitFilter;
 import com.cleentone.fintech.services.CustomUserDetailsService;
 
+/**
+ * This is the main security configuration for the application.
+ * It defines which endpoints are public, how we handle logins, and sets up
+ * our security filters like JWT authentication and rate limiting.
+ */
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
@@ -34,35 +39,51 @@ public class SecurityConfig {
     private final CustomUserDetailsService userDetailsService;
     private final ObjectMapper objectMapper;
 
+    /**
+     * Configures the HTTP security filter chain.
+     */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            // CSRF disabled intentionally — this API uses stateless JWT auth
+            // We're building a stateless API, so we can safely disable CSRF.
             .csrf(AbstractHttpConfigurer::disable)
+            
+            // Security header to prevent the site from being framed.
             .headers(headers -> headers
                 .frameOptions(frameOptions -> frameOptions.deny())
             )
 
+            // Define which parts of the API are open to everyone and which need a login.
             .authorizeHttpRequests(auth -> auth
-                // Public endpoints — no token required
+                // These endpoints (registration, login, logout, and API docs) don't need a token.
                 .requestMatchers("/auth/register", "/auth/login", "/auth/logout","/swagger-ui.html", "/v3/api-docs/**").permitAll()
-                // Everything else requires a valid token
+                
+                // For everything else, you must have a valid JWT.
                 .anyRequest().authenticated()
             )
+            
+            // How to handle situations where someone tries to access a protected resource without being logged in.
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint(unauthorizedEntryPoint())
             )
+            
+            // We don't want Spring creating sessions; we're using JWTs for every request.
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
+            
             .authenticationProvider(authenticationProvider())
-            // Rate limiting runs first, then JWT auth
+            
+            // Order matters here! We check the rate limit first, then authenticate the user.
             .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
+    /**
+     * Custom entry point to return a nice JSON error when authentication fails.
+     */
     @Bean
     public AuthenticationEntryPoint unauthorizedEntryPoint() {
         return (request, response, authException) -> {
@@ -74,6 +95,9 @@ public class SecurityConfig {
         };
     }
 
+    /**
+     * Connects our custom UserDetailsService and PasswordEncoder to Spring Security.
+     */
     @Bean
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
@@ -82,12 +106,18 @@ public class SecurityConfig {
         return provider;
     }
 
+    /**
+     * Standard AuthenticationManager bean.
+     */
     @Bean
     public AuthenticationManager authenticationManager(
             AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
 
+    /**
+     * We use BCrypt for hashing passwords. Strength 10 is a good balance between security and speed.
+     */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder(10);
