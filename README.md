@@ -1,8 +1,6 @@
 # Fintech Payment API
 
-Welcome to our production-ready fintech backend! This project is a simulated payment platform (think M-Pesa or PayPal) built using Java and Spring Boot. 
-
-We've focused heavily on making this system secure, reliable, and capable of handling high-concurrency transactions without missing a cent.
+This project is a simulated payment platform (think M-Pesa or PayPal) built using Java and Spring Boot.
 
 ## 🚀 Key Features
 
@@ -25,11 +23,26 @@ We've focused heavily on making this system secure, reliable, and capable of han
 
 ## 📖 Getting Started
 
-1.  **Clone the repo**.
-2.  **Configure your database** in `application.yml` (or use the default settings).
-3.  **Run the app**: `mvn spring-boot:run`.
-4.  **Explore the API**: Head over to `http://localhost:8080/swagger-ui.html` to see the interactive documentation.
+1. **Clone the repo**.
+2. **Configure your database** in `application.yml` (or use the default settings).
+3. **Run the app**: Navigate to the `fintech-payment-api` folder and run `mvn spring-boot:run`.
+4. **Explore the API**: Head over to `http://localhost:8080/swagger-ui.html` to see the interactive documentation.
 
-## 🤝 Contributing
+## 🧪 Running Tests
 
-We've worked hard to keep the code clean and well-documented with "human-first" comments. If you're looking to dive in, start with the `services` package to see how we handle the core business logic!
+All unit and integration tests run against an isolated in-memory H2 database. 
+
+To execute them, navigate to the directory containing the `pom.xml` file (`fintech-payment-api`) and run:
+
+*   **Run the entire test suite** (all 93 tests):
+    ```bash
+    mvn test
+    ```
+*   **Run only the Async Payment tests**:
+    ```bash
+    mvn test -Dtest=PaymentServiceTest,PaymentIntegrationTest
+    ```
+*   **Perform a clean build and run tests**:
+    ```bash
+    mvn clean test
+    ```
