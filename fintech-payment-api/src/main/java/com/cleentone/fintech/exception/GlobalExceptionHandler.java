@@ -173,4 +173,31 @@ public class GlobalExceptionHandler {
                     "Content-Type must be application/json"
                 ));
     }
+
+    /**
+     * The requested payment was not found in the database.
+     */
+    @ExceptionHandler(PaymentNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handlePaymentNotFound(PaymentNotFoundException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+            .body(new ErrorResponse("PAYMENT_NOT_FOUND", e.getMessage()));
+    }
+
+    /**
+     * An idempotency conflict occurred (duplicate payment details).
+     */
+    @ExceptionHandler(DuplicatePaymentException.class)
+    public ResponseEntity<ErrorResponse> handleDuplicatePayment(DuplicatePaymentException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+            .body(new ErrorResponse("DUPLICATE_PAYMENT", e.getMessage()));
+    }
+
+    /**
+     * The payment is in an invalid status for the requested transition action.
+     */
+    @ExceptionHandler(InvalidPaymentStateException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidPaymentState(InvalidPaymentStateException e) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+            .body(new ErrorResponse("INVALID_PAYMENT_STATE", e.getMessage()));
+    }
 }

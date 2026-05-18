@@ -1,8 +1,6 @@
 # Fintech Payment API
 
-This project is a simulated payment platform (think M-Pesa or PayPal) built using Java and Spring Boot. 
-
-I focused heavily on making this system secure, reliable, and capable of handling high-concurrency transactions without missing a cent.
+This project is a simulated payment platform (think M-Pesa or PayPal) built using Java and Spring Boot.
 
 ## 🚀 Key Features
 
