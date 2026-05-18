@@ -56,7 +56,7 @@ public class SecurityConfig {
             // Define which parts of the API are open to everyone and which need a login.
             .authorizeHttpRequests(auth -> auth
                 // These endpoints (registration, login, logout, and API docs) don't need a token.
-                .requestMatchers("/auth/register", "/auth/login", "/auth/logout","/swagger-ui.html", "/v3/api-docs/**").permitAll()
+                .requestMatchers("/auth/register", "/auth/login", "/auth/logout", "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs", "/v3/api-docs/**").permitAll()
                 
                 // For everything else, you must have a valid JWT.
                 .anyRequest().authenticated()

@@ -18,8 +18,20 @@ Authentication is handled by Spring Security, but I added a few custom layers:
 - **Token Revocation**: Since JWTs are stateless, they can't be "invalidated" easily. I built a `TokenBlacklistService` that stores revoked tokens in a `ConcurrentHashMap` until they naturally expire. For this project, an in-memory map is perfect, but I've designed it so that swapping it out for Redis in a multi-node environment would be straightforward.
 - **Rate Limiting**: I used `Bucket4j` and Caffeine to throttle traffic to sensitive endpoints like login and transfers. This protects against brute-force attempts and basic DDoS load.
 
+## Performance Optimizations
+
+To ensure high read/write throughput and reduce latency under heavy concurrent request volume, we implemented two key performance optimizations in the persistence layer:
+
+1. **N+1 Query Elimination**: In looking up a user's wallet balances, the default JPA lazy loading fired multiple database queries to fetch the associated `User` profile. We eliminated this N+1 query issue by introducing an `@EntityGraph(attributePaths = {"user"})` configuration on the repository lookup, forcing Hibernate to eager-fetch the user details inside a single joined SQL statement.
+2. **Database Schema Indexing**:
+   - Added a composite B-tree index `idx_tx_wallet_created` on `(wallet_id, created_at DESC)` in `transactions` to optimize sorted, paginated transaction history queries.
+   - Added `idx_tx_reference` on `(reference)` to ensure fast transactional reference lookup and idempotency validation.
+   - Added `idx_wallet_user_currency` on `(user_id, currency)` in `wallets` to boost concurrent read and write operations.
+
+
 ## Where This Goes Next
 While this version is stable and highly performant on a single node, there are clear paths for growth:
 - Moving the blacklist and rate-limiting buckets to Redis to support a distributed cluster.
 - Introducing a "System Integrity" check that reconciles total wallet balances against the transaction ledger to ensure 100% money conservation.
 - Transitioning the audit trail to an event-sourced model for even deeper financial logging.
+

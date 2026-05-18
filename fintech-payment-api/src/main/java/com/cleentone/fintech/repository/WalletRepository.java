@@ -5,6 +5,7 @@ import com.cleentone.fintech.model.Wallet;
 import com.cleentone.fintech.model.enums.Currency;
 
 import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -39,6 +40,7 @@ public interface WalletRepository extends JpaRepository<Wallet, UUID> {
     /**
      * Gets all wallets belonging to a specific user.
      */
+    @EntityGraph(attributePaths = {"user"})
     List<Wallet> findByUser(User user);
 
     /**
