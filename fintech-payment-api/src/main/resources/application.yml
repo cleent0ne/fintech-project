@@ -43,6 +43,7 @@ logging:
     org.springframework.security: WARN
     root: INFO
 
-  app:
-    rate-limit:
-      enabled: ${RATE_LIMIT_ENABLED:true}
+app:
+  rate-limit:
+    enabled: ${RATE_LIMIT_ENABLED:false}
+

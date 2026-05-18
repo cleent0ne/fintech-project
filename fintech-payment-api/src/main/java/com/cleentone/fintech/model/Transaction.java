@@ -30,7 +30,13 @@ import lombok.Setter;
  * Whether it's a deposit or a transfer, we capture it here for history and auditing.
  */
 @Entity
-@Table(name = "transactions", indexes = @Index(columnList = "wallet_id"))
+@Table(
+    name = "transactions",
+    indexes = {
+        @Index(name = "idx_tx_wallet_created", columnList = "wallet_id, created_at DESC"),
+        @Index(name = "idx_tx_reference", columnList = "reference")
+    }
+)
 @Getter
 @Setter
 @NoArgsConstructor

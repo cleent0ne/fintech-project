@@ -31,7 +31,10 @@ import java.util.UUID;
     uniqueConstraints = @UniqueConstraint(
         name = "uk_wallet_user_currency",
         columnNames = {"user_id", "currency"}
-    )
+    ),
+    indexes = {
+        @Index(name = "idx_wallet_user_currency", columnList = "user_id, currency")
+    }
 )
 @Getter
 @Setter
