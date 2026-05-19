@@ -74,6 +74,7 @@ public class AuthController {
      * Logs the user out by blacklisting their current JWT.
      */
     @Operation(summary = "Logout user", description = "Invalidates the current session token.")
+    @SecurityRequirement(name = "bearerAuth")
     @PostMapping("/logout")
     public ResponseEntity<Map<String, String>> logout(HttpServletRequest request) {
         String authHeader = request.getHeader("Authorization");
