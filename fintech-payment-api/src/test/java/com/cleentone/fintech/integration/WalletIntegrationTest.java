@@ -60,7 +60,7 @@ class WalletIntegrationTest {
         req.setPassword("SecurePass1!");
         req.setFullName(fullName);
 
-        MvcResult result = mockMvc.perform(post("/auth/register")
+        MvcResult result = mockMvc.perform(post("/api/v0/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isCreated())
@@ -75,7 +75,7 @@ class WalletIntegrationTest {
         req.setCurrency(Currency.valueOf(currency));
         req.setAmount(new BigDecimal(amount));
 
-        mockMvc.perform(post("/wallet/deposit")
+        mockMvc.perform(post("/api/v0/wallet/deposit")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
@@ -113,7 +113,7 @@ class WalletIntegrationTest {
         req.setCurrency(Currency.KES);
         req.setAmount(new BigDecimal("5000.00"));
 
-        mockMvc.perform(post("/wallet/deposit")
+        mockMvc.perform(post("/api/v0/wallet/deposit")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
@@ -142,7 +142,7 @@ class WalletIntegrationTest {
         String body = objectMapper.writeValueAsString(
                 Map.of("currency", "KES", "amount", 100));
 
-        mockMvc.perform(post("/wallet/deposit")
+        mockMvc.perform(post("/api/v0/wallet/deposit")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isUnauthorized());
@@ -169,7 +169,7 @@ class WalletIntegrationTest {
         req.setRequestId(java.util.UUID.randomUUID().toString());
         req.setDescription("Integration test transfer");
 
-        mockMvc.perform(post("/wallet/transfer")
+        mockMvc.perform(post("/api/v0/wallet/transfer")
                         .header("Authorization", "Bearer " + senderToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
@@ -225,7 +225,7 @@ class WalletIntegrationTest {
         req.setAmount(new BigDecimal("500.00")); // more than balance
         req.setRequestId(java.util.UUID.randomUUID().toString());
 
-        mockMvc.perform(post("/wallet/transfer")
+        mockMvc.perform(post("/api/v0/wallet/transfer")
                         .header("Authorization", "Bearer " + senderToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
@@ -255,7 +255,7 @@ class WalletIntegrationTest {
         req.setAmount(new BigDecimal("100.00"));
         req.setRequestId(java.util.UUID.randomUUID().toString());
 
-        mockMvc.perform(post("/wallet/transfer")
+        mockMvc.perform(post("/api/v0/wallet/transfer")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
@@ -277,7 +277,7 @@ class WalletIntegrationTest {
         req.setAmount(new BigDecimal("100.00"));
         req.setRequestId(java.util.UUID.randomUUID().toString());
 
-        mockMvc.perform(post("/wallet/transfer")
+        mockMvc.perform(post("/api/v0/wallet/transfer")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
@@ -299,7 +299,7 @@ class WalletIntegrationTest {
         deposit(token, "KES", "200.00");
         deposit(token, "KES", "300.00");
 
-        mockMvc.perform(get("/wallet/KES/transactions")
+        mockMvc.perform(get("/api/v0/wallet/KES/transactions")
                         .header("Authorization", "Bearer " + token)
                         .param("page", "0")
                         .param("size", "2"))
@@ -319,7 +319,7 @@ class WalletIntegrationTest {
     void unknownRoute_returns404() throws Exception {
         String token = registerAndGetToken("routetest@test.com", "Route Tester");
 
-        mockMvc.perform(get("/wallet/doesnotexist")
+        mockMvc.perform(get("/api/v0/wallet/doesnotexist")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error").value("ROUTE_NOT_FOUND"));
@@ -328,7 +328,7 @@ class WalletIntegrationTest {
     @Test
     @DisplayName("wrong HTTP method returns 405 METHOD_NOT_ALLOWED")
     void wrongMethod_returns405() throws Exception {
-        mockMvc.perform(get("/auth/login")) // login is POST only
+        mockMvc.perform(get("/api/v0/auth/login")) // login is POST only
                 .andExpect(status().isMethodNotAllowed())
                 .andExpect(jsonPath("$.error").value("METHOD_NOT_ALLOWED"));
     }

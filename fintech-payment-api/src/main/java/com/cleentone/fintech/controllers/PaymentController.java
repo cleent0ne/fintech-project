@@ -26,7 +26,7 @@ import java.util.UUID;
  * Supports secure client-initiated payments, queries, history logs, and payment gateway webhooks.
  */
 @RestController
-@RequestMapping("/payments")
+@RequestMapping("/api/v0/payments")
 @RequiredArgsConstructor
 @Slf4j
 public class PaymentController {

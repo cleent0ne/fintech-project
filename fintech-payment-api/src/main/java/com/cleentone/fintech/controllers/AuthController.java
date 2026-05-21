@@ -31,7 +31,7 @@ import java.util.Map;
  * If you need to sign up, log in, or log out, this is the place.
  */
 @RestController
-@RequestMapping("/auth")
+@RequestMapping("/api/v0/auth")
 @RequiredArgsConstructor
 public class AuthController {
 

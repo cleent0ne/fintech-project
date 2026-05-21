@@ -83,7 +83,7 @@ class WalletControllerTest {
     // ════════════════════════════════════════════════════════════════════════
 
     @Nested
-    @DisplayName("GET /wallet/balances")
+    @DisplayName("GET api/v0/wallet/balances")
     class GetBalances {
 
         @Test
@@ -92,7 +92,7 @@ class WalletControllerTest {
         void getBalances_authenticated_returns200() throws Exception {
             when(walletService.getAllWallets(any())).thenReturn(List.of(kesWalletResponse()));
 
-            mockMvc.perform(get("/wallet/balances"))
+            mockMvc.perform(get("/api/v0/wallet/balances"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$").isArray())
                     .andExpect(jsonPath("$[0].currency").value("KES"))
@@ -103,7 +103,7 @@ class WalletControllerTest {
         @Test
         @DisplayName("should return 401 for unauthenticated request")
         void getBalances_unauthenticated_returns401() throws Exception {
-            mockMvc.perform(get("/wallet/balances"))
+            mockMvc.perform(get("/api/v0/wallet/balances"))
                     .andExpect(status().isUnauthorized());
         }
     }
@@ -113,7 +113,7 @@ class WalletControllerTest {
     // ════════════════════════════════════════════════════════════════════════
 
     @Nested
-    @DisplayName("POST /wallet/deposit")
+    @DisplayName("POST api/v0/wallet/deposit")
     class Deposit {
 
         @Test
@@ -126,7 +126,7 @@ class WalletControllerTest {
                 {"currency":"KES","amount":500.00}
                 """;
 
-            mockMvc.perform(post("/wallet/deposit")
+            mockMvc.perform(post("/api/v0/wallet/deposit")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body)
                             .with(csrf()))
@@ -143,7 +143,7 @@ class WalletControllerTest {
                 {"currency":"KES","amount":-100.00}
                 """;
 
-            mockMvc.perform(post("/wallet/deposit")
+            mockMvc.perform(post("/api/v0/wallet/deposit")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body)
                             .with(csrf()))
@@ -159,7 +159,7 @@ class WalletControllerTest {
                 {"currency":"KES","amount":0}
                 """;
 
-            mockMvc.perform(post("/wallet/deposit")
+            mockMvc.perform(post("/api/v0/wallet/deposit")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body)
                             .with(csrf()))
@@ -174,7 +174,7 @@ class WalletControllerTest {
                 {"amount":500.00}
                 """;
 
-            mockMvc.perform(post("/wallet/deposit")
+            mockMvc.perform(post("/api/v0/wallet/deposit")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body)
                             .with(csrf()))
@@ -189,7 +189,7 @@ class WalletControllerTest {
                 {"currency":"KES","amount":100.123}
                 """;
 
-            mockMvc.perform(post("/wallet/deposit")
+            mockMvc.perform(post("/api/v0/wallet/deposit")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body)
                             .with(csrf()))
@@ -204,7 +204,7 @@ class WalletControllerTest {
                 {"currency":"KES","amount":9999999.00}
                 """;
 
-            mockMvc.perform(post("/wallet/deposit")
+            mockMvc.perform(post("/api/v0/wallet/deposit")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body)
                             .with(csrf()))
@@ -214,7 +214,7 @@ class WalletControllerTest {
         @Test
         @DisplayName("should return 401 when not authenticated")
         void deposit_unauthenticated_returns401() throws Exception {
-            mockMvc.perform(post("/wallet/deposit")
+            mockMvc.perform(post("/api/v0/wallet/deposit")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"currency\":\"KES\",\"amount\":100}")
                             .with(csrf()))
@@ -227,7 +227,7 @@ class WalletControllerTest {
     // ════════════════════════════════════════════════════════════════════════
 
     @Nested
-    @DisplayName("POST /wallet/transfer")
+    @DisplayName("POST api/v0/wallet/transfer")
     class Transfer {
 
         private TransferResponse mockTransferResponse() {
@@ -257,7 +257,7 @@ class WalletControllerTest {
                 }
                 """;
 
-            mockMvc.perform(post("/wallet/transfer")
+            mockMvc.perform(post("/api/v0/wallet/transfer")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body)
                             .with(csrf()))
@@ -278,7 +278,7 @@ class WalletControllerTest {
                 {"receiverEmail":"r@test.com","currency":"KES","amount":9999.00,"requestId":"req-456"}
                 """;
 
-            mockMvc.perform(post("/wallet/transfer")
+            mockMvc.perform(post("/api/v0/wallet/transfer")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body)
                             .with(csrf()))
@@ -297,7 +297,7 @@ class WalletControllerTest {
                 {"receiverEmail":"me@test.com","currency":"KES","amount":100.00,"requestId":"req-789"}
                 """;
 
-            mockMvc.perform(post("/wallet/transfer")
+            mockMvc.perform(post("/api/v0/wallet/transfer")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body)
                             .with(csrf()))
@@ -317,7 +317,7 @@ class WalletControllerTest {
                 {"receiverEmail":"ghost@test.com","currency":"KES","amount":100.00,"requestId":"req-abc"}
                 """;
 
-            mockMvc.perform(post("/wallet/transfer")
+            mockMvc.perform(post("/api/v0/wallet/transfer")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body)
                             .with(csrf()))
@@ -333,7 +333,7 @@ class WalletControllerTest {
                 {"receiverEmail":"not-an-email","currency":"KES","amount":100.00}
                 """;
 
-            mockMvc.perform(post("/wallet/transfer")
+            mockMvc.perform(post("/api/v0/wallet/transfer")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body)
                             .with(csrf()))
@@ -349,7 +349,7 @@ class WalletControllerTest {
                 {"receiverEmail":"r@test.com","currency":"KES"}
                 """;
 
-            mockMvc.perform(post("/wallet/transfer")
+            mockMvc.perform(post("/api/v0/wallet/transfer")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body)
                             .with(csrf()))
@@ -362,7 +362,7 @@ class WalletControllerTest {
     // ════════════════════════════════════════════════════════════════════════
 
     @Nested
-    @DisplayName("GET /wallet/{currency}/transactions")
+    @DisplayName("GET api/v0/wallet/{currency}/transactions")
     class TransactionHistory {
 
         @Test
@@ -373,7 +373,7 @@ class WalletControllerTest {
             when(walletService.getTransactionHistory(any(), any(), anyInt(), anyInt()))
                     .thenReturn(emptyPage);
 
-            mockMvc.perform(get("/wallet/KES/transactions")
+            mockMvc.perform(get("/api/v0/wallet/KES/transactions")
                             .param("page", "0")
                             .param("size", "20"))
                     .andExpect(status().isOk())
@@ -386,14 +386,14 @@ class WalletControllerTest {
         @WithMockUser
         @DisplayName("should return 400 for invalid currency in path")
         void getTransactions_invalidCurrency_returns400() throws Exception {
-            mockMvc.perform(get("/wallet/INVALID/transactions"))
+            mockMvc.perform(get("/api/v0/wallet/INVALID/transactions"))
                     .andExpect(status().isBadRequest());
         }
 
         @Test
         @DisplayName("should return 401 when not authenticated")
         void getTransactions_unauthenticated_returns401() throws Exception {
-            mockMvc.perform(get("/wallet/KES/transactions"))
+            mockMvc.perform(get("/api/v0/wallet/KES/transactions"))
                     .andExpect(status().isUnauthorized());
         }
     }

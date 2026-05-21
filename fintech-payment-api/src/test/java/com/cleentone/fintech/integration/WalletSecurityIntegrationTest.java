@@ -75,7 +75,7 @@ public class WalletSecurityIntegrationTest {
 
     private String loginAndGetToken(String email) throws Exception {
         String loginJson = String.format("{\"email\":\"%s\", \"password\":\"SecurePass1!\"}", email);
-        MvcResult result = mockMvc.perform(post("/auth/login")
+        MvcResult result = mockMvc.perform(post("/api/v0/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(loginJson))
                 .andExpect(status().isOk())
@@ -92,7 +92,7 @@ public class WalletSecurityIntegrationTest {
         // If we had a GET /wallet/{walletId}/balance, we'd test that too.
         // Our current API is /wallet/{currency}/balance, which is scoped to 'me'.
 
-        mockMvc.perform(get("/wallet/KES/balance")
+        mockMvc.perform(get("/api/v0/wallet/KES/balance")
                         .header("Authorization", "Bearer " + tokenA))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.currency").value("KES"));
@@ -118,7 +118,7 @@ public class WalletSecurityIntegrationTest {
                 .when(transactionRepository).save(any());
 
         // Act
-        mockMvc.perform(post("/wallet/transfer")
+        mockMvc.perform(post("/api/v0/wallet/transfer")
                         .header("Authorization", "Bearer " + tokenA)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))

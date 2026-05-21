@@ -27,7 +27,7 @@ import java.util.List;
  * All of these require you to be logged in (Authenticated).
  */
 @RestController
-@RequestMapping("/wallet")
+@RequestMapping("/api/v0/wallet")
 @RequiredArgsConstructor
 @SecurityRequirement(name = "bearerAuth")
 public class WalletController {
