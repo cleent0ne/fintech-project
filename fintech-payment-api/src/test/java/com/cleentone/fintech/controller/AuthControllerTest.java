@@ -72,7 +72,7 @@ class AuthControllerTest {
                 .build();
 
         Mockito.when(authService.register(Mockito.any(RegisterRequest.class))).thenReturn(response);
-        mockMvc.perform(post("/auth/register")
+        mockMvc.perform(post("/api/v0/auth/register")
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(request)))
         .andExpect(status().isCreated())
@@ -97,7 +97,7 @@ class AuthControllerTest {
                 .build();
 
         Mockito.when(authService.login(Mockito.any(LoginRequest.class))).thenReturn(response);
-        mockMvc.perform(post("/auth/login")
+        mockMvc.perform(post("/api/v0/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())

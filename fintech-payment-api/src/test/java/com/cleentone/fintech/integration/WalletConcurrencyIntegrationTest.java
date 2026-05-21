@@ -78,7 +78,7 @@ public class WalletConcurrencyIntegrationTest {
 
     private String loginAndGetToken(String email) throws Exception {
         String loginJson = String.format("{\"email\":\"%s\", \"password\":\"SecurePass1!\"}", email);
-        MvcResult result = mockMvc.perform(post("/auth/login")
+        MvcResult result = mockMvc.perform(post("/api/v0/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(loginJson))
                 .andExpect(status().isOk())
@@ -113,7 +113,7 @@ public class WalletConcurrencyIntegrationTest {
                     req.setAmount(transferAmount);
                     req.setRequestId(requestId);
 
-                    MvcResult result = mockMvc.perform(post("/wallet/transfer")
+                    MvcResult result = mockMvc.perform(post("/api/v0/wallet/transfer")
                                     .header("Authorization", "Bearer " + tokenA)
                                     .contentType(MediaType.APPLICATION_JSON)
                                     .content(objectMapper.writeValueAsString(req)))
@@ -178,7 +178,7 @@ public class WalletConcurrencyIntegrationTest {
                     req.setAmount(amount);
                     req.setRequestId(requestId);
 
-                    mockMvc.perform(post("/wallet/transfer")
+                    mockMvc.perform(post("/api/v0/wallet/transfer")
                                     .header("Authorization", "Bearer " + token)
                                     .contentType(MediaType.APPLICATION_JSON)
                                     .content(objectMapper.writeValueAsString(req)))

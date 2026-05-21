@@ -37,7 +37,7 @@ class AuthIntegrationTest {
         }
         """;
 
-        mockMvc.perform(post("/auth/register")
+        mockMvc.perform(post("/api/v0/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(registerJson))
                 .andExpect(status().isCreated());
@@ -49,7 +49,7 @@ class AuthIntegrationTest {
         }
         """;
 
-        mockMvc.perform(post("/auth/login")
+        mockMvc.perform(post("/api/v0/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(loginJson))
                 .andExpect(status().isOk())

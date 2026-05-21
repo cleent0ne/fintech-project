@@ -65,7 +65,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
 
         // This particular filter only cares about login and registration attempts.
-        if (!path.startsWith("/auth/login") && !path.startsWith("/auth/register")) {
+        if (!path.startsWith("/api/v0/auth/login") && !path.startsWith("/api/v0/auth/register")) {
             chain.doFilter(request, response);
             return;
         }

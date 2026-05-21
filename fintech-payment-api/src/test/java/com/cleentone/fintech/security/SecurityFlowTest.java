@@ -47,7 +47,7 @@ class SecurityFlowTest {
 
     @Test
 void shouldRejectRequestWithoutToken() throws Exception {
-    mockMvc.perform(get("/auth/me"))
+    mockMvc.perform(get("/api/v0/auth/me"))
             .andExpect(status().isUnauthorized())
             .andExpect(jsonPath("$.error").value("UNAUTHORIZED"));
 }
@@ -57,7 +57,7 @@ void shouldAllowRequestWithValidToken() throws Exception {
 
     String token = jwtUtil.generateToken(TEST_EMAIL);
 
-    mockMvc.perform(get("/auth/me")
+    mockMvc.perform(get("/api/v0/auth/me")
             .header("Authorization", "Bearer " + token))
             .andExpect(status().isOk());
 }
@@ -65,7 +65,7 @@ void shouldAllowRequestWithValidToken() throws Exception {
 @Test
 void shouldRejectInvalidToken() throws Exception {
 
-    mockMvc.perform(get("/auth/me")
+    mockMvc.perform(get("/api/v0/auth/me")
             .header("Authorization", "Bearer invalid.token.here"))
             .andExpect(status().isUnauthorized())
             .andExpect(jsonPath("$.error").value("UNAUTHORIZED"))
@@ -77,18 +77,18 @@ void shouldBlacklistTokenOnLogout() throws Exception {
     String token = jwtUtil.generateToken(TEST_EMAIL);
 
     // 1. Token works initially
-    mockMvc.perform(get("/auth/me")
+    mockMvc.perform(get("/api/v0/auth/me")
             .header("Authorization", "Bearer " + token))
             .andExpect(status().isOk());
 
     // 2. Logout
-    mockMvc.perform(post("/auth/logout")
+    mockMvc.perform(post("/api/v0/auth/logout")
             .header("Authorization", "Bearer " + token))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.message").value("Logged out successfully"));
 
     // 3. Token is now rejected
-    mockMvc.perform(get("/auth/me")
+    mockMvc.perform(get("/api/v0/auth/me")
             .header("Authorization", "Bearer " + token))
             .andExpect(status().isUnauthorized())
             .andExpect(jsonPath("$.message").value("Token has been revoked"));

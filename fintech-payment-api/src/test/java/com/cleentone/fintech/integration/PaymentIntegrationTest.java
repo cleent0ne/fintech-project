@@ -64,7 +64,7 @@ class PaymentIntegrationTest {
         req.setPassword("SecurePass1!");
         req.setFullName(fullName);
 
-        MvcResult result = mockMvc.perform(post("/auth/register")
+        MvcResult result = mockMvc.perform(post("/api/v0/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isCreated())
@@ -79,7 +79,7 @@ class PaymentIntegrationTest {
         req.setCurrency(Currency.valueOf(currency));
         req.setAmount(new BigDecimal(amount));
 
-        mockMvc.perform(post("/wallet/deposit")
+        mockMvc.perform(post("/api/v0/wallet/deposit")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
@@ -124,7 +124,7 @@ class PaymentIntegrationTest {
         req.setCurrency(Currency.KES);
         req.setIdempotencyKey("payment-idemp-1");
 
-        MvcResult initResult = mockMvc.perform(post("/payments/initiate")
+        MvcResult initResult = mockMvc.perform(post("/api/v0/payments/initiate")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
@@ -145,7 +145,7 @@ class PaymentIntegrationTest {
         assertThat(paymentOpt.get().getStatus()).isEqualTo(PaymentStatus.PENDING);
 
         // 3. Query Payment Status
-        mockMvc.perform(get("/payments/" + paymentIdStr + "/status")
+        mockMvc.perform(get("/api/v0/payments/" + paymentIdStr + "/status")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("PENDING"))
@@ -157,13 +157,13 @@ class PaymentIntegrationTest {
         callback.setStatus("SUCCESS");
         callback.setSignature(computeHmacSignature(paymentId, "SUCCESS", null));
 
-        mockMvc.perform(post("/payments/callback")
+        mockMvc.perform(post("/api/v0/payments/callback")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(callback)))
                 .andExpect(status().isOk());
 
         // 5. Query status again to verify SUCCESS and balance debit
-        mockMvc.perform(get("/payments/" + paymentIdStr + "/status")
+        mockMvc.perform(get("/api/v0/payments/" + paymentIdStr + "/status")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("SUCCESS"));
@@ -197,7 +197,7 @@ class PaymentIntegrationTest {
         req.setCurrency(Currency.KES);
         req.setIdempotencyKey("payment-broke-1");
 
-        mockMvc.perform(post("/payments/initiate")
+        mockMvc.perform(post("/api/v0/payments/initiate")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
@@ -216,7 +216,7 @@ class PaymentIntegrationTest {
         req.setCurrency(Currency.KES);
         req.setIdempotencyKey("hacker-key-1");
 
-        MvcResult initResult = mockMvc.perform(post("/payments/initiate")
+        MvcResult initResult = mockMvc.perform(post("/api/v0/payments/initiate")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
@@ -233,7 +233,7 @@ class PaymentIntegrationTest {
         callback.setStatus("SUCCESS");
         callback.setSignature("completely-invalid-signature-hash");
 
-        mockMvc.perform(post("/payments/callback")
+        mockMvc.perform(post("/api/v0/payments/callback")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(callback)))
                 .andExpect(status().is5xxServerError()); 
