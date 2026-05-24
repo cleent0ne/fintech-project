@@ -23,7 +23,8 @@ This project is a simulated payment platform (think M-Pesa or PayPal) built usin
 
 ## 📖 Getting Started
 
-1. **Clone the repo**.
-2. **Configure your database** in `application.yml` (or use the default settings).
-3. **Run the app**: Navigate to the `fintech-payment-api` folder and run `mvn spring-boot:run`.
-4. **Explore the API**: Head over to `http://localhost:8080/swagger-ui.html` to see the interactive documentation.
+1.  **Clone the repo**.
+2.  **Configure your database** in `application.yml` (or use the default settings).
+3.  **Run the app**: `mvn spring-boot:run`.
+4.  **Explore the API**: Head over to `http://localhost:8080/swagger-ui.html` to see the interactive documentation.
+
